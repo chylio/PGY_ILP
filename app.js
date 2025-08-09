@@ -16,15 +16,39 @@ class ErrorBoundary extends React.Component {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Something went wrong</h1>
-            <p className="text-gray-600 mb-4">We're sorry, but something unexpected happened.</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="btn btn-black"
-            >
-              Reload Page
-            </button>
+          <div className="text-center card max-w-md">
+            <div className="text-6xl mb-4">😵</div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">系統發生錯誤</h1>
+            <p className="text-gray-600 mb-4">
+              很抱歉，應用程式遇到了未預期的錯誤。請嘗試重新載入頁面。
+            </p>
+            <div className="space-y-2">
+              <button
+                onClick={() => window.location.reload()}
+                className="btn-primary w-full"
+              >
+                重新載入頁面
+              </button>
+              <button
+                onClick={() => {
+                  localStorage.clear();
+                  window.location.reload();
+                }}
+                className="btn-secondary w-full text-sm"
+              >
+                清除資料並重新載入
+              </button>
+            </div>
+            {process.env.NODE_ENV === 'development' && (
+              <details className="mt-4 text-left">
+                <summary className="cursor-pointer text-sm text-gray-500">
+                  錯誤詳情 (開發模式)
+                </summary>
+                <pre className="mt-2 p-2 bg-gray-100 text-xs text-red-600 rounded overflow-auto">
+                  {this.state.error?.toString()}
+                </pre>
+              </details>
+            )}
           </div>
         </div>
       );

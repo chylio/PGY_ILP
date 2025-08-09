@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Quality Improvements Demo - PGY_ILP</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8fafc;
+            color: #1f2937;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #e5e7eb;
+        }
+        .improvement {
+            border-left: 4px solid #10b981;
+            padding-left: 16px;
+            margin: 16px 0;
+        }
+        .issue {
+            border-left: 4px solid #ef4444;
+            padding-left: 16px;
+            margin: 16px 0;
+        }
+        .code-block {
+            background: #f3f4f6;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            padding: 16px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin: 12px 0;
+        }
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+        .warning { color: #f59e0b; }
+        h1, h2, h3 { color: #1f2937; }
+        h1 { 
+            background: linear-gradient(135deg, #3b82f6, #10b981);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .status-item {
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+        .fixed { background-color: #f0fdf4; border-color: #bbf7d0; }
+        .improved { background-color: #eff6ff; border-color: #bfdbfe; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>PGY_ILP 代碼品質改善報告</h1>
+        
+        <div class="card">
+            <h2>🛡️ 安全性改善</h2>
+            
+            <div class="improvement">
+                <h3>✅ 密碼安全性</h3>
+                <p><strong>問題：</strong>明文儲存密碼</p>
+                <div class="code-block">
+// 修改前 (不安全)
+password: '123456'
+
+// 修改後 (已雜湊)
+password: 'e10adc3949ba59abbe56e057f20f883e' // MD5 雜湊
+                </div>
+                <p><strong>改善：</strong>實作密碼雜湊機制，避免明文儲存</p>
+            </div>
+
+            <div class="improvement">
+                <h3>✅ 輸入驗證</h3>
+                <p><strong>改善：</strong>新增前端輸入驗證</p>
+                <div class="code-block">
+// 驗證表單輸入
+validateForm() {
+  if (!formData.username || formData.username.length < 3) {
+    throw new Error('帳號至少需要 3 個字元');
+  }
+  if (!formData.password || formData.password.length < 6) {
+    throw new Error('密碼至少需要 6 個字元');
+  }
+}
+                </div>
+            </div>
+
+            <div class="improvement">
+                <h3>✅ 資料清理</h3>
+                <p><strong>改善：</strong>自動去除空白字元，限制輸入長度</p>
+                <div class="code-block">
+// 清理和驗證資料
+return {
+  userId: plan.userId.trim(),
+  learningGoal: plan.learningGoal.trim().substring(0, 500),
+  // ... 其他欄位
+};
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🔧 錯誤處理改善</h2>
+            
+            <div class="improvement">
+                <h3>✅ 完善的錯誤邊界</h3>
+                <p><strong>改善：</strong>更好的錯誤顯示和恢復選項</p>
+                <div class="code-block">
+// 改善後的錯誤邊界
+&lt;div className="text-center card max-w-md"&gt;
+  &lt;h1&gt;系統發生錯誤&lt;/h1&gt;
+  &lt;button onClick={() =&gt; window.location.reload()}&gt;
+    重新載入頁面
+  &lt;/button&gt;
+  &lt;button onClick={() =&gt; { localStorage.clear(); window.location.reload(); }}&gt;
+    清除資料並重新載入
+  &lt;/button&gt;
+&lt;/div&gt;
+                </div>
+            </div>
+
+            <div class="improvement">
+                <h3>✅ 一致的錯誤處理</h3>
+                <p><strong>改善：</strong>所有 async 操作都包含適當的 try-catch</p>
+                <div class="code-block">
+// 改善的儲存方法
+async saveILPPlan(plan) {
+  try {
+    const validatedPlan = this.validateILPPlan(plan);
+    // ... 儲存邏輯
+    return newPlan;
+  } catch (error) {
+    console.error('儲存學習計畫失敗:', error);
+    throw new Error('儲存學習計畫失敗: ' + error.message);
+  }
+}
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>♿ 無障礙改善</h2>
+            
+            <div class="improvement">
+                <h3>✅ 表單標籤和描述</h3>
+                <p><strong>改善：</strong>新增適當的 ARIA 標籤和說明文字</p>
+                <div class="code-block">
+&lt;label htmlFor="username"&gt;帳號&lt;/label&gt;
+&lt;input 
+  id="username"
+  name="username"
+  aria-describedby="username-help"
+  autoComplete="username"
+/&gt;
+&lt;p id="username-help"&gt;帳號至少需要 3 個字元&lt;/p&gt;
+                </div>
+            </div>
+
+            <div class="improvement">
+                <h3>✅ 錯誤訊息無障礙</h3>
+                <p><strong>改善：</strong>錯誤訊息加入 ARIA 標籤</p>
+                <div class="code-block">
+&lt;div 
+  className="error-message"
+  role="alert"
+  aria-live="polite"
+&gt;
+  &lt;span&gt;⚠️&lt;/span&gt; {error}
+&lt;/div&gt;
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📊 代碼品質統計</h2>
+            
+            <div class="status-grid">
+                <div class="status-item fixed">
+                    <h3 class="success">✅ 已修復</h3>
+                    <ul>
+                        <li>密碼明文儲存問題</li>
+                        <li>缺少輸入驗證</li>
+                        <li>錯誤處理不一致</li>
+                        <li>無障礙標籤缺失</li>
+                        <li>資料驗證不足</li>
+                    </ul>
+                </div>
+                
+                <div class="status-item improved">
+                    <h3 class="success">🔧 已改善</h3>
+                    <ul>
+                        <li>表單驗證機制</li>
+                        <li>錯誤邊界處理</li>
+                        <li>資料清理流程</li>
+                        <li>使用者體驗</li>
+                        <li>代碼文檔註解</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📝 改善摘要</h2>
+            <p>本次代碼品質改善主要針對以下幾個關鍵領域：</p>
+            
+            <div class="improvement">
+                <h3>🛡️ 安全性</h3>
+                <p>實作密碼雜湊、輸入驗證和資料清理，提升應用程式安全性。</p>
+            </div>
+            
+            <div class="improvement">
+                <h3>🔧 錯誤處理</h3>
+                <p>統一錯誤處理模式，提供更好的使用者體驗和除錯資訊。</p>
+            </div>
+            
+            <div class="improvement">
+                <h3>♿ 無障礙性</h3>
+                <p>新增 ARIA 標籤、表單關聯和無障礙支援，提升使用體驗。</p>
+            </div>
+            
+            <div class="improvement">
+                <h3>📊 資料驗證</h3>
+                <p>強化資料驗證機制，確保資料完整性和應用程式穩定性。</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🚀 建議後續改善</h2>
+            <p>雖然已經修復了關鍵問題，但還有一些可以進一步改善的地方：</p>
+            <ul>
+                <li>實作更強的密碼雜湊算法 (如 bcrypt)</li>
+                <li>新增 TypeScript 支援以提升類型安全</li>
+                <li>建立完整的測試套件</li>
+                <li>實作更完善的狀態管理</li>
+                <li>新增 ESLint 和 Prettier 代碼規範</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
