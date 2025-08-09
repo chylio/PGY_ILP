@@ -12,11 +12,11 @@
     <meta name="twitter:title" content="個人化學習計畫平台">
     <meta name="twitter:description" content="個人化學習計畫線上平台，讓學生制定追蹤學習計畫，獲得AI和教師回饋">
 
-    <script src="https://resource.trickle.so/vendor_lib/unpkg/react@18/umd/react.production.min.js"></script>
-    <script src="https://resource.trickle.so/vendor_lib/unpkg/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://resource.trickle.so/vendor_lib/unpkg/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://resource.trickle.so/vendor_lib/unpkg/lucide-static@0.516.0/font/lucide.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/lucide.min.css" rel="stylesheet">
 
     <!-- Predefined Tailwind CSS, use it as needed, or update base on your -->
     <style type="text/tailwindcss">
@@ -80,6 +80,23 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
+        
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+        
+        .focus-visible {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
+        }
     }
     </style>
 
@@ -96,6 +113,7 @@
     <script type="text/babel" src="components/AnalysisView.js"></script>
     <script type="text/babel" src="utils/auth.js"></script>
     <script type="text/babel" src="utils/storage.js"></script>
+    <script type="text/babel" src="utils/validation.js"></script>
     <script type="text/babel" src="utils/aiAnalysis.js"></script>
     <script type="text/babel" src="app.js"></script>
 </body>

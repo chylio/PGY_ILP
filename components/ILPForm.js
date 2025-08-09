@@ -14,16 +14,66 @@ function ILPForm({ user, onSubmit, onBack }) {
       timeline: ''
     });
     const [loading, setLoading] = React.useState(false);
+    const [errors, setErrors] = React.useState({});
 
     const handleInputChange = (e) => {
+      const { name, value } = e.target;
       setFormData({
         ...formData,
-        [e.target.name]: e.target.value
+        [name]: value
       });
+      
+      // 清除該欄位的錯誤訊息
+      if (errors[name]) {
+        setErrors({
+          ...errors,
+          [name]: ''
+        });
+      }
+    };
+
+    const validateForm = () => {
+      const newErrors = {};
+      
+      // 必填欄位驗證
+      if (!formData.learningGoal.trim()) {
+        newErrors.learningGoal = '學習目標不能為空';
+      } else if (formData.learningGoal.trim().length < 10) {
+        newErrors.learningGoal = '學習目標至少需要 10 個字元';
+      }
+      
+      if (!formData.motivation.trim()) {
+        newErrors.motivation = '學習動機不能為空';
+      } else if (formData.motivation.trim().length < 10) {
+        newErrors.motivation = '學習動機至少需要 10 個字元';
+      }
+      
+      if (!formData.strategy.trim()) {
+        newErrors.strategy = '學習策略不能為空';
+      } else if (formData.strategy.trim().length < 10) {
+        newErrors.strategy = '學習策略至少需要 10 個字元';
+      }
+      
+      if (!formData.evaluation.trim()) {
+        newErrors.evaluation = '評估指標不能為空';
+      }
+      
+      if (!formData.timeline.trim()) {
+        newErrors.timeline = '預計時程不能為空';
+      }
+
+      setErrors(newErrors);
+      return Object.keys(newErrors).length === 0;
     };
 
     const handleSubmit = async (e) => {
       e.preventDefault();
+      
+      // 前端驗證
+      if (!validateForm()) {
+        return;
+      }
+      
       setLoading(true);
 
       try {
@@ -44,7 +94,7 @@ function ILPForm({ user, onSubmit, onBack }) {
         onSubmit();
       } catch (error) {
         console.error('提交表單失敗:', error);
-        alert('提交失敗，請稍後再試');
+        setErrors({ submit: error.message || '提交失敗，請稍後再試' });
       } finally {
         setLoading(false);
       }
