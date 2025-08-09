@@ -1,103 +1,843 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>個人化學習計畫 (ILP) 平台</title>
-    <!-- Chosen Palette: Professional & Clean (Blue, Grays, White) -->
-    <!-- Application Structure Plan: A single-page application (SPA) with a new login-first architecture. The initial view is a login form. Upon successful "login," the view switches to the student's main dashboard, which serves as the central hub. From the dashboard, the user can navigate to other "pages" like the ILP form or analysis reports. This is managed by dynamically showing/hiding different content sections (divs) instead of reloading the page, creating a seamless multi-page experience within a single HTML file. This structure directly implements the user flow shown in the provided images. -->
-    <!-- Visualization & Content Choices: 
-        - Login Form (Goal: Authentication): A standard, clean form as per the user's image.
-        - Student Dashboard (Goal: Overview/Navigation): Uses stat cards for key metrics and a list of existing ILPs. A prominent "New Plan" button serves as the primary call-to-action. This replaces the old role-selection screen with a more functional, data-driven entry point.
-        - ILP Form (Goal: Data Entry): A clean, single-column form within a card, matching the user's provided design for a professional and focused data entry experience.
-        - Teacher Dashboard (Goal: Review/Manage): Implements the user-provided design with stat cards and an interactive student list for efficient management.
-        - Admin Dashboard (Goal: Monitor/Manage): Implements the user-provided design with high-level stat cards, a recent activity feed, and quick action buttons for system-wide management.
-        - All interactions are handled with vanilla JavaScript to update the DOM dynamically. -->
-    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', 'Noto Sans TC', sans-serif;
-            background-color: #f8f9fa;
-        }
-        .view { display: none; }
-        .view.active { display: block; }
-        .form-label { @apply block text-gray-700 text-sm font-medium mb-2; }
-        .form-input, .form-textarea, .form-select { @apply bg-white border border-gray-300 rounded-md w-full py-2.5 px-3 text-gray-800 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200; }
-        .form-textarea { @apply h-32 resize-none; }
-        .btn { @apply font-semibold py-2 px-5 rounded-lg focus:outline-none focus:shadow-outline transition-all duration-300; }
-        .btn-primary { @apply bg-blue-600 hover:bg-blue-700 text-white; }
-        .btn-secondary { @apply bg-gray-200 hover:bg-gray-300 text-gray-700; }
-        .chart-container { position: relative; width: 100%; max-width: 800px; margin-left: auto; margin-right: auto; height: 400px; max-height: 50vh; }
-    </style>
-</head>
-<body class="text-gray-800">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>個人化學習計畫 (ILP) 平台</title>
 
-    <div id="app" class="container mx-auto p-4 sm:p-6 md:p-8">
-
-        <!-- ===== Login View ===== -->
-        <div id="login-view" class="view active">
-            <div class="max-w-md mx-auto mt-10">
-                <header class="mb-8 text-center">
-                    <h1 class="text-3xl font-bold text-blue-600">ILP 學習平台</h1>
-                    <p class="text-gray-500 mt-2">個人化學習計畫管理系統</p>
-                </header>
-                <div class="bg-white p-8 rounded-xl shadow-lg">
-                    <form id="login-form" class="space-y-6">
-                        <div>
-                            <label for="identity" class="form-label">身份</label>
-                            <select id="identity" name="identity" class="form-select">
-                                <option value="student1">學生</option>
-                                <option value="teacher1">教師</option>
-                                <option value="admin1">管理者</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="password" class="form-label">密碼</label>
-                            <input type="password" id="password" name="password" class="form-input" placeholder="請輸入密碼" value="password">
-                        </div>
-                        <button type="submit" class="btn btn-primary w-full !py-3">登入</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- ===== Main Application View (For Logged-in Users) ===== -->
-        <div id="main-app-view" class="view max-w-7xl mx-auto">
-            <header class="flex justify-between items-center mb-8 pb-4 border-b border-gray-200">
-                <div class="flex items-center gap-6">
-                    <h1 class="text-2xl font-bold text-blue-600">ILP 學習平台</h1>
-                    <nav id="main-nav" class="flex gap-4">
-                        <!-- Nav links will be injected here -->
-                    </nav>
-                </div>
-                <div class="flex items-center gap-4">
-                    <span id="welcome-message" class="text-gray-600"></span>
-                    <button id="logout-btn" class="btn btn-secondary">登出</button>
-                </div>
-            </header>
-            <main id="app-content">
-                <!-- Content for each role's pages will be injected here -->
-            </main>
-        </div>
-
-    </div>
+  <!-- Custom CSS for educational flat design -->
+  <style>
+    body { 
+      background-color: #f6f8fb; 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      color: #374151;
+    }
     
-    <div id="error-box" class="hidden fixed top-5 right-5 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow-lg" role="alert">
-      <strong class="font-bold">發生錯誤！</strong>
-      <span id="error-message" class="block sm:inline"></span>
-    </div>
+    .view { display: none; }
+    .view.active { display: block; }
+    
+    /* Layout utilities */
+    .min-h-screen { min-height: 100vh; }
+    .max-w-7xl { max-width: 80rem; margin: 0 auto; }
+    .max-w-md { max-width: 28rem; margin: 0 auto; }
+    .max-w-4xl { max-width: 56rem; margin: 0 auto; }
+    .mx-auto { margin-left: auto; margin-right: auto; }
+    .px-4 { padding-left: 1rem; padding-right: 1rem; }
+    .py-8 { padding-top: 2rem; padding-bottom: 2rem; }
+    .p-6 { padding: 1.5rem; }
+    .p-5 { padding: 1.25rem; }
+    .px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
+    .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+    .py-2_5 { padding-top: 0.625rem; padding-bottom: 0.625rem; }
+    .px-5 { padding-left: 1.25rem; padding-right: 1.25rem; }
+    .py-4 { padding-top: 1rem; padding-bottom: 1rem; }
+    .mb-6 { margin-bottom: 1.5rem; }
+    .mb-8 { margin-bottom: 2rem; }
+    .mb-2 { margin-bottom: 0.5rem; }
+    .mt-3 { margin-top: 0.75rem; }
+    .mt-2 { margin-top: 0.5rem; }
+    .gap-2 { gap: 0.5rem; }
+    .gap-3 { gap: 0.75rem; }
+    .gap-4 { gap: 1rem; }
+    .gap-6 { gap: 1.5rem; }
+    
+    /* Flexbox */
+    .flex { display: flex; }
+    .flex-wrap { flex-wrap: wrap; }
+    .items-center { align-items: center; }
+    .justify-between { justify-content: space-between; }
+    .justify-end { justify-content: flex-end; }
+    
+    /* Grid */
+    .grid { display: grid; }
+    .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+    .grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    
+    /* Header */
+    .header { 
+      background: rgba(255, 255, 255, 0.9); 
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid #e5e7eb;
+      height: 4rem;
+      display: flex;
+      align-items: center;
+    }
+    
+    .logo-container {
+      height: 2.25rem;
+      width: 2.25rem;
+      border-radius: 0.5rem;
+      background-color: #d9ecff;
+      color: #1a59bf;
+      display: grid;
+      place-items: center;
+    }
+    
+    /* Cards */
+    .card { 
+      background: white; 
+      border: 1px solid #e5e7eb; 
+      border-radius: 14px; 
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    /* Primary colors */
+    .bg-primary-50 { background-color: #eef7ff; }
+    .bg-primary-100 { background-color: #d9ecff; }
+    .bg-primary-600 { background-color: #1f6de6; }
+    .bg-primary-700 { background-color: #1a59bf; }
+    .bg-primary-800 { background-color: #174a9c; }
+    .text-primary-700 { color: #1a59bf; }
+    .text-primary-800 { color: #174a9c; }
+    
+    /* Form elements */
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      border-radius: 0.5rem;
+      border: 1px solid #d1d5db;
+      background: white;
+      padding: 0.625rem 0.75rem;
+      color: #374151;
+      outline: none;
+      transition: all 0.2s;
+    }
+    
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      border-color: #1f6de6;
+      box-shadow: 0 0 0 2px rgba(31, 109, 230, 0.2);
+    }
+    
+    .form-textarea {
+      height: 8rem;
+      resize: vertical;
+    }
+    
+    /* Buttons */
+    .btn {
+      font-weight: 600;
+      padding: 0.625rem 1rem;
+      border-radius: 0.5rem;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+    }
+    
+    .btn-primary {
+      background-color: #1f6de6;
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background-color: #1a59bf;
+    }
+    
+    .btn-secondary {
+      background-color: #f3f4f6;
+      color: #374151;
+    }
+    
+    .btn-secondary:hover {
+      background-color: #e5e7eb;
+    }
+    
+    /* Typography */
+    .text-2xl { font-size: 1.5rem; line-height: 2rem; }
+    .text-lg { font-size: 1.125rem; line-height: 1.75rem; }
+    .text-xl { font-size: 1.25rem; line-height: 1.75rem; }
+    .text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
+    .text-sm { font-size: 0.875rem; line-height: 1.25rem; }
+    .text-xs { font-size: 0.75rem; line-height: 1rem; }
+    .font-bold { font-weight: 700; }
+    .font-semibold { font-weight: 600; }
+    .font-medium { font-weight: 500; }
+    
+    .text-gray-500 { color: #6b7280; }
+    .text-gray-600 { color: #4b5563; }
+    .text-gray-700 { color: #374151; }
+    .text-gray-800 { color: #1f2937; }
+    .text-center { text-align: center; }
+    
+    /* Colors */
+    .bg-white { background-color: white; }
+    .bg-gray-50 { background-color: #f9fafb; }
+    .bg-gray-100 { background-color: #f3f4f6; }
+    .bg-gray-200 { background-color: #e5e7eb; }
+    .bg-emerald-50 { background-color: #ecfdf5; }
+    .bg-amber-50 { background-color: #fffbeb; }
+    .text-emerald-700 { color: #047857; }
+    .text-amber-700 { color: #b45309; }
+    .text-amber-600 { color: #d97706; }
+    .text-emerald-600 { color: #059669; }
+    .text-rose-600 { color: #dc2626; }
+    
+    /* Border */
+    .border { border: 1px solid #e5e7eb; }
+    .border-b { border-bottom: 1px solid #e5e7eb; }
+    .border-t { border-top: 1px solid #e5e7eb; }
+    .border-gray-200 { border-color: #e5e7eb; }
+    .border-gray-300 { border-color: #d1d5db; }
+    .rounded-lg { border-radius: 0.5rem; }
+    .rounded-xl { border-radius: 14px; }
+    .rounded-full { border-radius: 9999px; }
+    
+    /* Spacing */
+    .space-y-4 > * + * { margin-top: 1rem; }
+    .space-y-5 > * + * { margin-top: 1.25rem; }
+    .space-y-6 > * + * { margin-top: 1.5rem; }
+    .divide-y > * + * { border-top: 1px solid #e5e7eb; }
+    
+    /* Display */
+    .hidden { display: none !important; }
+    .block { display: block; }
+    .inline-flex { display: inline-flex; }
+    
+    /* Position */
+    .fixed { position: fixed; }
+    .top-5 { top: 1.25rem; }
+    .right-5 { right: 1.25rem; }
+    
+    /* Width/Height */
+    .w-full { width: 100%; }
+    .h-16 { height: 4rem; }
+    .h-9 { height: 2.25rem; }
+    .w-9 { width: 2.25rem; }
+    .h-10 { height: 2.5rem; }
+    .w-10 { width: 2.5rem; }
+    .min-w-0 { min-width: 0; }
+    
+    /* Special */
+    .truncate { 
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    .transition-colors { transition: color 0.2s, background-color 0.2s; }
+    
+    /* Tables */
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th { padding: 0.75rem 1rem; font-weight: 500; color: #6b7280; font-size: 0.875rem; }
+    td { padding: 0.75rem 1rem; }
+    tr:hover { background-color: #f9fafb; }
+    
+    /* Error/Alert */
+    .alert {
+      background-color: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #dc2626;
+      padding: 1rem;
+      border-radius: 0.5rem;
+    }
+    
+    /* Responsive */
+    @media (min-width: 640px) {
+      .sm\\:px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
+      .sm\\:flex-row { flex-direction: row; }
+      .sm\\:items-end { align-items: flex-end; }
+      .sm\\:justify-between { justify-content: space-between; }
+      .sm\\:inline { display: inline; }
+      .sm\\:text-xl { font-size: 1.25rem; line-height: 1.75rem; }
+      .sm\\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    
+    @media (min-width: 768px) {
+      .md\\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .md\\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .md\\:p-8 { padding: 2rem; }
+    }
+    
+    @media (min-width: 1024px) {
+      .lg\\:px-8 { padding-left: 2rem; padding-right: 2rem; }
+      .lg\\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+  </style>
+</head>
+<body class="font-sans text-gray-800">
 
-    <!-- Templates for dynamic content will go here -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            // ===== DATA (Mock Database) =====
-            const MOCK_DATA = {
-                users: {
-                    student1: { role: 'student', name: '王小明' },
-                    teacher1: { role: 'teacher', name: '陳老師' },
+  <div id="app" class="min-h-screen">
+    <!-- Top bar -->
+    <header class="header bg-white border-b border-gray-200">
+      <div class="max-w-7xl mx-auto px-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="logo-container">🎓</div>
+          <h1 class="text-lg font-semibold text-primary-700">ILP 學習平台</h1>
+        </div>
+        <div class="flex items-center gap-4">
+          <span id="welcome-message" class="hidden text-gray-600"></span>
+          <button id="logout-btn" class="hidden btn btn-secondary">登出</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+      <!-- ===== Login View ===== -->
+      <div id="login-view" class="view active">
+        <div class="max-w-md mx-auto">
+          <section class="text-center mb-8">
+            <p class="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-primary-50 text-primary-700 text-sm">
+              <span>📚</span> 教育扁平化設計
+            </p>
+            <h2 class="text-2xl font-bold mt-3">個人化學習計畫管理系統</h2>
+            <p class="text-gray-500 mt-2">請選擇登入方式</p>
+          </section>
+
+          <div class="card p-6">
+            <form id="login-form" class="space-y-5">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">登入身分</label>
+                <select id="login-mode" class="form-select">
+                  <option value="teacher">教師登入（帳號/密碼）</option>
+                  <option value="student_demo">學生示範登入（無需密碼）</option>
+                </select>
+              </div>
+
+              <!-- Teacher login fields -->
+              <div id="teacher-fields" class="space-y-4">
+                <div>
+                  <label for="teacher-login" class="block text-sm font-medium text-gray-700 mb-2">帳號（login_id）</label>
+                  <input id="teacher-login" type="text" class="form-input" placeholder="請輸入帳號，例如 940963 或 A60833">
+                </div>
+                <div>
+                  <label for="teacher-password" class="block text-sm font-medium text-gray-700 mb-2">密碼</label>
+                  <input id="teacher-password" type="password" class="form-input" placeholder="請輸入密碼">
+                </div>
+              </div>
+
+              <!-- Student demo login fields -->
+              <div id="student-fields" class="space-y-4 hidden">
+                <div>
+                  <label for="student-select" class="block text-sm font-medium text-gray-700 mb-2">選擇學生</label>
+                  <select id="student-select" class="form-select"></select>
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-primary w-full">登入</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== Main Application View ===== -->
+      <div id="main-app-view" class="view">
+        <nav id="main-nav" class="flex flex-wrap gap-2 mb-6"></nav>
+        <div id="app-content"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Error toast -->
+  <div id="error-box" class="hidden fixed top-5 right-5 alert" role="alert">
+    <strong class="font-semibold">發生錯誤：</strong>
+    <span id="error-message" class="ml-1 align-middle"></span>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // ===== RAW CSV (from your data) =====
+      const CSV_STUDENT_TEACHER = `student_name,student_class_or_level,teacher_name
+陳建廷,PGY1,郭妍伶
+高品霓,PGY1,陳伯榕
+林向宏,PGY1,郭妍伶
+吳婕寧,PGY1,陳伯榕
+`;
+
+      const CSV_ILP_FIELDS = `field_key,label,type,options,required
+name,姓名,text,,TRUE
+gender,性別,select,男;女;其他/不透露,TRUE
+rank,職級,select,醫學生;PGY-1;PGY-2;住院醫師;總醫師;主治醫師;護理師;其他,TRUE
+fill_date,填寫日期,date,,TRUE
+goal,學習目標一（你想學什麼？）,textarea,,TRUE
+motivation,學習動機（什麼事件誘發你想要學這個？）,textarea,,TRUE
+strategy,策略（你需要做什麼？）,textarea,,FALSE
+resources,資源（需要誰的幫忙或什麼設備？）,textarea,,FALSE
+challenges,可能遭遇的困難,textarea,,FALSE
+assessment,評估內容與指標（怎麼樣才能證明你達到你的學習目標？）,textarea,,TRUE
+timeline,預計時程（這部分的學習預計多久達成？）,text,,TRUE
+`;
+
+      const CSV_TEACHERS = `teacher_name,login_id,initial_password
+郭妍伶,940963,940963
+陳伯榕,A60833,A60833
+廖家德,980911,980911
+吳曉琪,A00924,A00924
+`;
+
+      // ===== DOM =====
+      const loginView   = document.getElementById('login-view');
+      const mainAppView = document.getElementById('main-app-view');
+      const appContent  = document.getElementById('app-content');
+      const mainNav     = document.getElementById('main-nav');
+      const welcomeText = document.getElementById('welcome-message');
+      const logoutBtn   = document.getElementById('logout-btn');
+
+      const loginModeSel = document.getElementById('login-mode');
+      const teacherFields = document.getElementById('teacher-fields');
+      const studentFields = document.getElementById('student-fields');
+      const studentSelect = document.getElementById('student-select');
+
+      // ===== STATE =====
+      let DATA = null;
+      let appState = {
+        currentUser: null, // { role: 'teacher'|'student', ... }
+        currentView: 'login',
+      };
+
+      // ===== UTILS =====
+      function showError(message) {
+        const box = document.getElementById('error-box');
+        const msg = document.getElementById('error-message');
+        msg.textContent = message || '發生未知的錯誤';
+        box.classList.remove('hidden');
+        setTimeout(() => box.classList.add('hidden'), 4000);
+      }
+
+      function parseCSV(csvText) {
+        const lines = csvText.trim().split('\n');
+        const headers = lines[0].split(',');
+        return lines.slice(1).map(line => {
+          const values = line.match(/(".*?"|[^",\r\n]+)(?=\s*,|\s*$)/g)?.map(v => v.replace(/"/g, '')) || [];
+          return headers.reduce((obj, header, index) => {
+            obj[header.trim()] = values[index] ? values[index].trim() : '';
+            return obj;
+          }, {});
+        });
+      }
+
+      function normalizePGY(value) {
+        if (!value) return value;
+        // Map e.g., PGY1 -> PGY-1
+        const m = String(value).match(/^PGY\s*-?\s*(\d)$/i);
+        if (m) return `PGY-${m[1]}`;
+        return value;
+      }
+
+      // LocalStorage helpers for ILPs per student
+      function ilpKeyForStudent(studentName) { return `ilp:${studentName}`; }
+      function getIlpsForStudent(studentName) {
+        try {
+          return JSON.parse(localStorage.getItem(ilpKeyForStudent(studentName)) || '[]');
+        } catch { return []; }
+      }
+      function saveIlpsForStudent(studentName, ilps) {
+        localStorage.setItem(ilpKeyForStudent(studentName), JSON.stringify(ilps));
+      }
+
+      // ===== DATA INGEST =====
+      function buildData() {
+        const teacherRows = parseCSV(CSV_TEACHERS);
+        const studentRows = parseCSV(CSV_STUDENT_TEACHER);
+
+        const teachersById = {};
+        const teachersByName = {};
+        teacherRows.forEach(t => {
+          const teacher = {
+            role: 'teacher',
+            name: t.teacher_name,
+            userId: t.login_id,
+            password: t.initial_password
+          };
+          teachersById[teacher.userId] = teacher;
+          teachersByName[teacher.name] = teacher;
+        });
+
+        const students = studentRows.map((s, idx) => ({
+          role: 'student',
+          id: `S${(idx+1).toString().padStart(4,'0')}`, // generated
+          name: s.student_name,
+          classLevel: s.student_class_or_level,
+          teacherName: s.teacher_name
+        }));
+
+        const studentsByTeacherName = {};
+        students.forEach(s => {
+          if (!studentsByTeacherName[s.teacherName]) studentsByTeacherName[s.teacherName] = [];
+          studentsByTeacherName[s.teacherName].push(s);
+        });
+
+        const ilpFields = parseCSV(CSV_ILP_FIELDS);
+
+        return {
+          teachersById,
+          teachersByName,
+          students,
+          studentsByTeacherName,
+          ilpFields
+        };
+      }
+
+      // ===== NAV & ROUTER =====
+      function navigateTo(view, data = null) {
+        appState.currentView = view;
+        appContent.innerHTML = '';
+        updateNav();
+
+        switch (view) {
+          case 'student-dashboard': renderStudentDashboard(); break;
+          case 'student-form':      renderStudentForm(data);  break;
+          case 'teacher-dashboard': renderTeacherDashboard(); break;
+          default:
+            showError('此頁面尚未提供');
+            if (appState.currentUser) {
+              const r = appState.currentUser.role;
+              navigateTo(r === 'student' ? 'student-dashboard' : 'teacher-dashboard');
+            }
+        }
+      }
+
+      function makeNavLink(label, view) {
+        const a = document.createElement('button');
+        a.type = 'button';
+        const active = appState.currentView === view;
+        a.className = active
+            ? 'btn bg-primary-100 text-primary-800'
+            : 'btn btn-secondary';
+        a.textContent = label;
+        a.onclick = () => navigateTo(view);
+        return a;
+      }
+
+      function updateNav() {
+        mainNav.innerHTML = '';
+        if (!appState.currentUser) {
+          welcomeText.classList.add('hidden');
+          logoutBtn.classList.add('hidden');
+          return;
+        }
+
+        welcomeText.textContent = `歡迎，${appState.currentUser.name}`;
+        welcomeText.classList.remove('hidden');
+        logoutBtn.classList.remove('hidden');
+
+        const role = appState.currentUser.role;
+        if (role === 'student') {
+          mainNav.appendChild(makeNavLink('我的計畫', 'student-dashboard'));
+          mainNav.appendChild(makeNavLink('新增計畫', 'student-form'));
+        } else if (role === 'teacher') {
+          mainNav.appendChild(makeNavLink('學生管理', 'teacher-dashboard'));
+        }
+      }
+
+      // ===== RENDERERS =====
+      function renderStudentDashboard() {
+        const user = appState.currentUser;
+        const ilps = getIlpsForStudent(user.name);
+        const plans = ilps.length;
+
+        const header = `
+          <div class="flex justify-between gap-2 mb-6">
+            <div>
+              <h2 class="text-2xl font-bold">學習總覽</h2>
+              <p class="text-gray-500">學生：${user.name}（${user.classLevel}） | 導師：${user.teacherName}</p>
+            </div>
+            <button id="add-new-plan-btn" class="btn btn-primary">
+              新增計畫
+            </button>
+          </div>
+        `;
+
+        const stats = `
+          <div class="grid grid-cols-1 gap-4 mb-8">
+            <div class="card p-5 flex items-center gap-4">
+              <div class="h-10 w-10 rounded-lg bg-primary-50 text-primary-700 flex items-center justify-center">📘</div>
+              <div>
+                <p class="text-gray-500 text-sm">學習計畫</p>
+                <p class="text-2xl font-bold">${plans}</p>
+              </div>
+            </div>
+            <div class="card p-5 flex items-center gap-4">
+              <div class="h-10 w-10 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">📈</div>
+              <div>
+                <p class="text-gray-500 text-sm">完成率</p>
+                <p class="text-2xl font-bold">0%</p>
+              </div>
+            </div>
+            <div class="card p-5 flex items-center gap-4">
+              <div class="h-10 w-10 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center">💡</div>
+              <div>
+                <p class="text-gray-500 text-sm">AI 分析</p>
+                <p class="text-2xl font-bold">0</p>
+              </div>
+            </div>
+          </div>
+        `;
+
+        const list = `
+          <div class="card">
+            <div class="px-5 py-4 border-b border-gray-200">
+              <h3 class="text-lg font-semibold">我的學習計畫</h3>
+            </div>
+            <div class="divide-y">
+              ${ilps.length === 0 ? `
+                <div class="px-5 py-6 text-gray-500">尚未建立任何計畫，點擊「新增計畫」開始填寫。</div>
+              ` : ilps.map((ilp, idx) => `
+                <div class="px-5 py-4">
+                  <div class="flex items-center justify-between">
+                    <div class="min-w-0">
+                      <p class="font-medium truncate">${ilp.goal?.slice(0, 40) || '未填寫目標'}</p>
+                      <p class="text-sm text-gray-500 mt-2">建立日期：${ilp.fill_date || '-'}</p>
+                    </div>
+                    <span class="text-xs px-3 py-2 rounded bg-gray-100 text-gray-700">草稿</span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+
+        appContent.innerHTML = header + stats + list;
+        document.getElementById('add-new-plan-btn').addEventListener('click', () => navigateTo('student-form'));
+      }
+
+      function renderStudentForm() {
+        const fields = DATA.ilpFields;
+
+        appContent.innerHTML = `
+          <div class="max-w-4xl mx-auto">
+            <div class="flex items-center justify-between mb-6">
+              <div>
+                <h2 class="text-2xl font-bold">建立學習計畫</h2>
+                <p class="text-gray-500">請依序填寫，並確認後提交。</p>
+              </div>
+              <button id="back-to-dashboard-btn" class="btn btn-secondary">返回</button>
+            </div>
+
+            <form id="ilp-form" class="card p-6 space-y-6">
+              <div class="rounded-lg bg-primary-50 text-primary-800 px-4 py-3 text-sm">
+                📌 小提醒：標記為必填的欄位需完成填寫才能提交。
+              </div>
+              <!-- fields injected here -->
+            </form>
+          </div>
+        `;
+
+        const ilpForm = document.getElementById('ilp-form');
+
+        // Basic info grid
+        const basicInfoContainer = document.createElement('div');
+        basicInfoContainer.className = 'grid grid-cols-1 gap-6';
+
+        const student = appState.currentUser;
+
+        fields.forEach(q => {
+          const wrapper = document.createElement('div');
+          const label = document.createElement('label');
+          label.className = 'block text-sm font-medium text-gray-700 mb-2';
+          label.setAttribute('for', q.field_key);
+          label.textContent = q.label || q.field_key;
+          wrapper.appendChild(label);
+
+          let inputEl;
+          if (q.type === 'select') {
+            inputEl = document.createElement('select');
+            inputEl.className = 'form-select';
+            (q.options || '').split(';').map(s => s.trim()).filter(Boolean).forEach(opt => {
+              const option = document.createElement('option');
+              option.value = opt;
+              option.textContent = opt;
+              inputEl.appendChild(option);
+            });
+          } else if (q.type === 'textarea') {
+            inputEl = document.createElement('textarea');
+            inputEl.className = 'form-textarea';
+          } else if (q.type === 'date') {
+            inputEl = document.createElement('input');
+            inputEl.type = 'date';
+            inputEl.className = 'form-input';
+            inputEl.valueAsDate = new Date();
+          } else {
+            inputEl = document.createElement('input');
+            inputEl.type = 'text';
+            inputEl.className = 'form-input';
+          }
+
+          inputEl.id = q.field_key;
+          inputEl.name = q.field_key;
+          if ((String(q.required || '').toUpperCase()) === 'TRUE') inputEl.required = true;
+
+          // Prefill for name/rank
+          if (q.field_key === 'name') inputEl.value = student.name || '';
+          if (q.field_key === 'rank') {
+            const norm = normalizePGY(student.classLevel);
+            if (q.type === 'select' && norm) {
+              const opts = Array.from(inputEl.options).map(o => o.value);
+              const idx = opts.indexOf(norm);
+              if (idx >= 0) inputEl.selectedIndex = idx;
+            }
+          }
+
+          wrapper.appendChild(inputEl);
+
+          if (['name', 'gender', 'rank', 'fill_date'].includes(q.field_key)) {
+            basicInfoContainer.appendChild(wrapper);
+          } else {
+            ilpForm.appendChild(wrapper);
+          }
+        });
+
+        ilpForm.prepend(basicInfoContainer);
+
+        const buttons = document.createElement('div');
+        buttons.className = 'flex justify-end gap-3 pt-4 border-t border-gray-200';
+        buttons.innerHTML = `
+          <button type="button" id="cancel-form-btn" class="btn btn-secondary">取消</button>
+          <button type="submit" class="btn btn-primary">提交計畫</button>
+        `;
+        ilpForm.appendChild(buttons);
+
+        document.getElementById('back-to-dashboard-btn').addEventListener('click', () => navigateTo('student-dashboard'));
+        document.getElementById('cancel-form-btn').addEventListener('click', () => navigateTo('student-dashboard'));
+        ilpForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const formData = new FormData(ilpForm);
+          const record = {};
+          for (const [k, v] of formData.entries()) record[k] = v;
+
+          const ilps = getIlpsForStudent(student.name);
+          ilps.push(record);
+          saveIlpsForStudent(student.name, ilps);
+
+          navigateTo('student-dashboard');
+        });
+      }
+
+      function renderTeacherDashboard() {
+        const teacher = appState.currentUser;
+        const students = DATA.studentsByTeacherName[teacher.name] || [];
+
+        // Aggregate ILPs for this teacher's students
+        let totalIlps = 0;
+        students.forEach(s => { totalIlps += getIlpsForStudent(s.name).length; });
+
+        appContent.innerHTML = `
+          <div class="flex items-end justify-between mb-6">
+            <div>
+              <h2 class="text-2xl font-bold">教師儀表板</h2>
+              <p class="text-gray-500">教師：${teacher.name}（帳號：${teacher.userId}）</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 gap-4 mb-8">
+            <div class="card p-5">
+              <p class="text-sm text-gray-500">學生總數</p>
+              <p class="text-3xl font-bold text-primary-700 mt-2">${students.length}</p>
+            </div>
+            <div class="card p-5">
+              <p class="text-sm text-gray-500">學生計畫數</p>
+              <p class="text-3xl font-bold text-amber-600 mt-2">${totalIlps}</p>
+            </div>
+            <div class="card p-5">
+              <p class="text-sm text-gray-500">已完成計畫</p>
+              <p class="text-3xl font-bold text-emerald-600 mt-2">0</p>
+            </div>
+            <div class="card p-5">
+              <p class="text-sm text-gray-500">待審核</p>
+              <p class="text-3xl font-bold text-rose-600 mt-2">${totalIlps}</p>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="px-5 py-4 border-b border-gray-200">
+              <h3 class="text-lg font-semibold">學生列表</h3>
+            </div>
+            <table>
+              <thead>
+                <tr class="border-b border-gray-200 text-gray-500 text-sm">
+                  <th>學生姓名</th>
+                  <th>職級/班級</th>
+                  <th>計畫數</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y">
+                ${students.map(s => {
+                  const count = getIlpsForStudent(s.name).length;
+                  return `
+                    <tr>
+                      <td>${s.name}</td>
+                      <td>${s.classLevel}</td>
+                      <td>${count}</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      // ===== EVENTS =====
+      document.getElementById('login-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const mode = loginModeSel.value;
+
+        if (mode === 'teacher') {
+          const login = document.getElementById('teacher-login').value.trim();
+          const pwd   = document.getElementById('teacher-password').value;
+
+          const teacher = DATA.teachersById[login];
+          if (!teacher || teacher.password !== pwd) {
+            showError('帳號或密碼錯誤');
+            return;
+          }
+
+          appState.currentUser = { role: 'teacher', ...teacher };
+          loginView.classList.remove('active');
+          mainAppView.classList.add('active');
+          updateNav();
+          navigateTo('teacher-dashboard');
+        } else {
+          const studentId = studentSelect.value;
+          const student = DATA.students.find(s => s.id === studentId);
+          if (!student) {
+            showError('請選擇學生');
+            return;
+          }
+          appState.currentUser = { ...student };
+          loginView.classList.remove('active');
+          mainAppView.classList.add('active');
+          updateNav();
+          navigateTo('student-dashboard');
+        }
+      });
+
+      document.getElementById('logout-btn').addEventListener('click', () => {
+        appState.currentUser = null;
+        mainAppView.classList.remove('active');
+        loginView.classList.add('active');
+        welcomeText.classList.add('hidden');
+        logoutBtn.classList.add('hidden');
+      });
+
+      loginModeSel.addEventListener('change', () => {
+        const mode = loginModeSel.value;
+        if (mode === 'teacher') {
+          teacherFields.classList.remove('hidden');
+          studentFields.classList.add('hidden');
+        } else {
+          teacherFields.classList.add('hidden');
+          studentFields.classList.remove('hidden');
+        }
+      });
+
+      // ===== INIT =====
+      DATA = buildData();
+
+      // Populate student demo select
+      studentSelect.innerHTML = DATA.students.map(s =>
+        `<option value="${s.id}">${s.name}（${s.classLevel}｜師：${s.teacherName}）</option>`
+      ).join('');
+
+      // Default values for convenience
+      document.getElementById('teacher-login').value = Object.values(DATA.teachersById)[0]?.userId || '';
+      document.getElementById('teacher-password').value = Object.values(DATA.teachersById)[0]?.password || '';
+    });
+  </script>
+</body>
+</html>
                     admin1: { role: 'admin', name: '系統管理員' },
                 },
                 ilpQuestionsCSV: `field_key,label,type,options,required,placeholder,helper_text
