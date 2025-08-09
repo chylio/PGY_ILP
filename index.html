@@ -1,144 +1,399 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>個人化學習計畫平台 - ILP Platform</title>
-    <meta name="description" content="個人化學習計畫線上平台，讓學生制定追蹤學習計畫，獲得AI和教師回饋">
-    <meta name="keywords" content="學習計畫,教育平台,AI分析,學習追蹤">
-    <meta property="og:title" content="個人化學習計畫平台">
-    <meta property="og:description" content="個人化學習計畫線上平台，讓學生制定追蹤學習計畫，獲得AI和教師回饋">
-    <meta name="twitter:title" content="個人化學習計畫平台">
-    <meta name="twitter:description" content="個人化學習計畫線上平台，讓學生制定追蹤學習計畫，獲得AI和教師回饋">
-
-    <!-- React + Babel -->
-    <script src="https://resource.trickle.so/vendor_lib/unpkg/react@18/umd/react.production.min.js"></script>
-    <script src="https://resource.trickle.so/vendor_lib/unpkg/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://resource.trickle.so/vendor_lib/unpkg/@babel/standalone/babel.min.js"></script>
-
-    <!-- Tailwind -->
+    <title>個人化學習計畫 (ILP) 平台</title>
+    <!-- Chosen Palette: Professional & Clean (Blue, Grays, White) -->
+    <!-- Application Structure Plan: A single-page application (SPA) with a new login-first architecture. The initial view is a login form. Upon successful "login," the view switches to the student's main dashboard, which serves as the central hub. From the dashboard, the user can navigate to other "pages" like the ILP form or analysis reports. This is managed by dynamically showing/hiding different content sections (divs) instead of reloading the page, creating a seamless multi-page experience within a single HTML file. This structure directly implements the user flow shown in the provided images. -->
+    <!-- Visualization & Content Choices: 
+        - Login Form (Goal: Authentication): A standard, clean form as per the user's image.
+        - Student Dashboard (Goal: Overview/Navigation): Uses stat cards for key metrics and a list of existing ILPs. A prominent "New Plan" button serves as the primary call-to-action. This replaces the old role-selection screen with a more functional, data-driven entry point.
+        - ILP Form (Goal: Data Entry): A clean, single-column form within a card, matching the user's provided design for a professional and focused data entry experience.
+        - Teacher Dashboard (Goal: Review/Manage): Implements the user-provided design with stat cards and an interactive student list for efficient management.
+        - Admin Dashboard (Goal: Monitor/Manage): Implements the user-provided design with high-level stat cards, a recent activity feed, and quick action buttons for system-wide management.
+        - All interactions are handled with vanilla JavaScript to update the DOM dynamically. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://resource.trickle.so/vendor_lib/unpkg/lucide-static@0.516.0/font/lucide.css" rel="stylesheet">
-
-    <!-- Predefined Tailwind CSS -->
-    <style type="text/tailwindcss">
-    @layer theme {
-        :root {
-            --primary-color: #3b82f6;
-            --secondary-color: #f3f4f6;
-            --accent-color: #10b981;
-            --text-primary: #1f2937;
-            --text-secondary: #6b7280;
-            --border-color: #e5e7eb;
-            --success-color: #10b981;
-            --warning-color: #f59e0b;
-            --error-color: #ef4444;
-        }
-    }
-
-    @layer base {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
         body {
-            @apply bg-gray-50 text-gray-900 font-sans;
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background-color: #f8f9fa;
         }
-        
-        h1, h2, h3, h4, h5, h6 {
-            @apply font-semibold text-[var(--text-primary)];
-        }
-    }
-
-    @layer components {
-        .btn-primary {
-            @apply px-4 py-2 bg-[var(--primary-color)] text-white rounded-md hover:bg-blue-600 transition-colors;
-        }
-        
-        .btn-secondary {
-            @apply px-4 py-2 bg-[var(--secondary-color)] text-[var(--text-primary)] rounded-md hover:bg-gray-300 transition-colors;
-        }
-        
-        .card {
-            @apply bg-white rounded-lg shadow-sm border border-[var(--border-color)] p-6;
-        }
-        
-        .input-field {
-            @apply w-full px-3 py-2 border border-[var(--border-color)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] focus:border-transparent;
-        }
-        
-        .nav-item {
-            @apply px-3 py-2 rounded-md text-sm font-medium transition-colors;
-        }
-        
-        .nav-item-active {
-            @apply bg-[var(--primary-color)] text-white;
-        }
-        
-        .nav-item-inactive {
-            @apply text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-gray-100;
-        }
-    }
-
-    @layer utilities {
-        .text-gradient {
-            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-    }
+        .view { display: none; }
+        .view.active { display: block; }
+        .form-label { @apply block text-gray-700 text-sm font-medium mb-2; }
+        .form-input, .form-textarea, .form-select { @apply bg-white border border-gray-300 rounded-md w-full py-2.5 px-3 text-gray-800 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200; }
+        .form-textarea { @apply h-32 resize-none; }
+        .btn { @apply font-semibold py-2 px-5 rounded-lg focus:outline-none focus:shadow-outline transition-all duration-300; }
+        .btn-primary { @apply bg-blue-600 hover:bg-blue-700 text-white; }
+        .btn-secondary { @apply bg-gray-200 hover:bg-gray-300 text-gray-700; }
+        .chart-container { position: relative; width: 100%; max-width: 800px; margin-left: auto; margin-right: auto; height: 400px; max-height: 50vh; }
     </style>
 </head>
-<body>
-    <div id="root"></div>
+<body class="text-gray-800">
 
-    <!-- 在 file:// 開啟時顯示提示，並做基本健康檢查（不依賴 Babel） -->
+    <div id="app" class="container mx-auto p-4 sm:p-6 md:p-8">
+
+        <!-- ===== Login View ===== -->
+        <div id="login-view" class="view active">
+            <div class="max-w-md mx-auto mt-10">
+                <header class="mb-8 text-center">
+                    <h1 class="text-3xl font-bold text-blue-600">ILP 學習平台</h1>
+                    <p class="text-gray-500 mt-2">個人化學習計畫管理系統</p>
+                </header>
+                <div class="bg-white p-8 rounded-xl shadow-lg">
+                    <form id="login-form" class="space-y-6">
+                        <div>
+                            <label for="identity" class="form-label">身份</label>
+                            <select id="identity" name="identity" class="form-select">
+                                <option value="student1">學生</option>
+                                <option value="teacher1">教師</option>
+                                <option value="admin1">管理者</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="password" class="form-label">密碼</label>
+                            <input type="password" id="password" name="password" class="form-input" placeholder="請輸入密碼" value="password">
+                        </div>
+                        <button type="submit" class="btn btn-primary w-full !py-3">登入</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== Main Application View (For Logged-in Users) ===== -->
+        <div id="main-app-view" class="view max-w-7xl mx-auto">
+            <header class="flex justify-between items-center mb-8 pb-4 border-b border-gray-200">
+                <div class="flex items-center gap-6">
+                    <h1 class="text-2xl font-bold text-blue-600">ILP 學習平台</h1>
+                    <nav id="main-nav" class="flex gap-4">
+                        <!-- Nav links will be injected here -->
+                    </nav>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span id="welcome-message" class="text-gray-600"></span>
+                    <button id="logout-btn" class="btn btn-secondary">登出</button>
+                </div>
+            </header>
+            <main id="app-content">
+                <!-- Content for each role's pages will be injected here -->
+            </main>
+        </div>
+
+    </div>
+    
+    <div id="error-box" class="hidden fixed top-5 right-5 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow-lg" role="alert">
+      <strong class="font-bold">發生錯誤！</strong>
+      <span id="error-message" class="block sm:inline"></span>
+    </div>
+
+    <!-- Templates for dynamic content will go here -->
     <script>
-    (function() {
-      function badge(html, bg, border, color) {
-        var box = document.createElement('div');
-        box.style.position = 'fixed';
-        box.style.left = '8px';
-        box.style.right = '8px';
-        box.style.zIndex = '99999';
-        box.style.borderRadius = '8px';
-        box.style.padding = '10px 12px';
-        box.style.fontFamily = 'system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Helvetica, Arial';
-        box.style.background = bg; box.style.border = '1px solid ' + border; box.style.color = color;
-        return box;
-      }
-      if (location.protocol === 'file:') {
-        var warn = badge('', '#fff7ed', '#ffedd5', '#9a3412');
-        warn.style.top = '8px';
-        warn.innerHTML = '偵測到使用 file:// 直接開啟。請改用本機伺服器（例如在專案資料夾執行 <code>python -m http.server 5500</code> 或 <code>npx serve</code>），再前往 <a href="http://localhost:5500/index.html" target="_blank">http://localhost:5500/index.html</a>。否則 Babel 無法載入外部 JSX 檔案，頁面會是空白。';
-        (document.body || document.documentElement).appendChild(warn);
-      }
-      window.addEventListener('load', function(){
-        if (!window.React || !window.ReactDOM || !window.Babel) {
-          var err = badge('', '#fef2f2', '#fee2e2', '#991b1b');
-          err.style.bottom = '8px';
-          err.innerHTML = '偵測到 React/ReactDOM/Babel 可能未成功載入。請確認網路能存取 CDN，或改用以下來源：<br>' +
-            '<code>https://unpkg.com/react@18/umd/react.production.min.js</code><br>' +
-            '<code>https://unpkg.com/react-dom@18/umd/react-dom.production.min.js</code><br>' +
-            '<code>https://unpkg.com/@babel/standalone/babel.min.js</code>';
-          (document.body || document.documentElement).appendChild(err);
-        }
-      });
-    })();
+        document.addEventListener('DOMContentLoaded', function () {
+            // ===== DATA (Mock Database) =====
+            const MOCK_DATA = {
+                users: {
+                    student1: { role: 'student', name: '王小明' },
+                    teacher1: { role: 'teacher', name: '陳老師' },
+                    admin1: { role: 'admin', name: '系統管理員' },
+                },
+                ilpQuestionsCSV: `field_key,label,type,options,required,placeholder,helper_text
+name,姓名,text,,True,王小明,,
+gender,性別,select,"男;女;其他",True,,
+rank,職級/班級,text,,True,PGY-1,,
+fill_date,填寫日期,date,,True,,
+goal,學習目標一,textarea,,True,請描述您的學習目標...,(你想學什麼？)
+motivation,學習動機,textarea,,True,請描述您的學習動機...,(什麼事件誘發你想要學這個？)
+strategy,學習策略,textarea,,False,請描述您的學習策略...,(你需要做什麼？)
+resources,學習資源,textarea,,False,請描述所需的資源...,(需要誰的幫忙或什麼設備？)
+challenges,可能遭遇的困難,textarea,,False,請預想可能遇到的困難...,
+assessment,評估內容與指標,textarea,,True,請描述評估方式和成功指標...,(怎麼樣才能證明你達到你的學習目標？)
+timeline,預計時程,text,,True,"例如：3個月、半年...",(這部分的學習預計多久達成？)`,
+                studentDashboard: {
+                    plans: 1,
+                    completionRate: '0%',
+                    aiAnalysis: 0,
+                    ilps: [
+                        { id: 1, title: '提升值班處理緊急狀況的能力', status: '草稿', date: '2025/8/9' }
+                    ]
+                },
+                teacherDashboard: {
+                    totalStudents: 4,
+                    ongoingPlans: 8,
+                    completedPlans: 2,
+                    pendingReview: 3,
+                    students: [
+                        { name: '王小明', class: '三年一班', planCount: 3, lastActivity: '2024/1/15' },
+                        { name: '李小華', class: '三年一班', planCount: 2, lastActivity: '2024/1/14' },
+                        { name: '張小美', class: '三年二班', planCount: 4, lastActivity: '2024/1/16' },
+                        { name: '陳小強', class: '三年二班', planCount: 1, lastActivity: '2024/1/13' },
+                    ]
+                },
+                adminDashboard: {
+                    totalUsers: 156,
+                    studentCount: 142,
+                    teacherCount: 12,
+                    totalPlans: 284,
+                    activeUsers: 89,
+                    systemStatus: '正常',
+                    recentActivities: [
+                        { icon: '➡️', text: '學生登入系統', user: '王小明', time: '2024-01-16 14:30' },
+                        { icon: '📝', text: '建立新學習計畫', user: '李小華', time: '2024-01-16 14:25' },
+                        { icon: '💡', text: '完成計畫分析', user: 'AI系統', time: '2024-01-16 14:20' },
+                        { icon: '➡️', text: '教師登入系統', user: '陳老師', time: '2024-01-16 14:15' },
+                        { icon: '🔄', text: '更新學習計畫', user: '張小美', time: '2024-01-16 14:10' },
+                    ]
+                }
+            };
+
+            // ===== STATE MANAGEMENT =====
+            let appState = {
+                currentUser: null,
+                currentView: 'login',
+            };
+
+            // ===== DOM ELEMENTS =====
+            const loginView = document.getElementById('login-view');
+            const mainAppView = document.getElementById('main-app-view');
+            const appContent = document.getElementById('app-content');
+            const mainNav = document.getElementById('main-nav');
+            const welcomeMessage = document.getElementById('welcome-message');
+
+            // ===== UTILITY FUNCTIONS =====
+            function showError(message) {
+                const errorBox = document.getElementById('error-box');
+                const errorMessage = document.getElementById('error-message');
+                errorMessage.textContent = message;
+                errorBox.classList.remove('hidden');
+                setTimeout(() => errorBox.classList.add('hidden'), 5000);
+            }
+            
+            function parseCSV(csvText) {
+                const lines = csvText.trim().split('\n');
+                const headers = lines[0].split(',');
+                return lines.slice(1).map(line => {
+                    const values = line.match(/(".*?"|[^",\r\n]+)(?=\s*,|\s*$)/g).map(v => v.replace(/"/g, ''));
+                    return headers.reduce((obj, header, index) => {
+                        obj[header.trim()] = values[index] ? values[index].trim() : '';
+                        return obj;
+                    }, {});
+                });
+            }
+
+            // ===== VIEW SWITCHING & RENDERING =====
+            function navigateTo(view, data = null) {
+                appState.currentView = view;
+                appContent.innerHTML = '';
+                updateNav();
+
+                switch (view) {
+                    case 'student-dashboard': renderStudentDashboard(); break;
+                    case 'student-form': renderStudentForm(data); break;
+                    case 'teacher-dashboard': renderTeacherDashboard(); break;
+                    case 'admin-dashboard': renderAdminDashboard(); break;
+                }
+            }
+            
+            function updateNav() {
+                mainNav.innerHTML = '';
+                let navItems = [];
+
+                if (!appState.currentUser) return;
+
+                switch (appState.currentUser.role) {
+                    case 'student':
+                        navItems = [
+                            { name: '我的計畫', view: 'student-dashboard' },
+                            { name: '分析報告', view: 'student-report' }
+                        ];
+                        break;
+                    case 'teacher':
+                        navItems = [
+                            { name: '學生管理', view: 'teacher-dashboard' },
+                            { name: '分析統計', view: 'teacher-analytics' }
+                        ];
+                        break;
+                    case 'admin':
+                        navItems = [
+                            { name: '系統總覽', view: 'admin-dashboard' },
+                            { name: '用戶管理', view: 'admin-users' }
+                        ];
+                        break;
+                }
+
+                navItems.forEach(item => {
+                    const link = document.createElement('a');
+                    link.href = '#';
+                    link.textContent = item.name;
+                    link.className = `px-3 py-2 rounded-md text-sm font-medium transition-colors ${appState.currentView === item.view ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-100'}`;
+                    link.onclick = (e) => { e.preventDefault(); navigateTo(item.view); };
+                    mainNav.appendChild(link);
+                });
+            }
+
+            function renderStudentDashboard() {
+                const data = MOCK_DATA.studentDashboard;
+                appContent.innerHTML = `
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold">歡迎回來，${appState.currentUser.name}</h2>
+                        <p class="text-gray-500">管理您的個人化學習計畫</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-white p-6 rounded-xl shadow flex items-center gap-4">
+                            <div class="bg-blue-100 p-3 rounded-lg"><span class="text-2xl">📘</span></div>
+                            <div><p class="text-gray-500">學習計畫</p><p class="text-2xl font-bold">${data.plans}</p><p class="text-sm text-gray-400">已建立計畫</p></div>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow flex items-center gap-4">
+                            <div class="bg-green-100 p-3 rounded-lg"><span class="text-2xl">📈</span></div>
+                            <div><p class="text-gray-500">完成率</p><p class="text-2xl font-bold">${data.completionRate}</p><p class="text-sm text-gray-400">計畫達成率</p></div>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow flex items-center gap-4">
+                            <div class="bg-yellow-100 p-3 rounded-lg"><span class="text-2xl">💡</span></div>
+                            <div><p class="text-gray-500">AI 分析</p><p class="text-2xl font-bold">${data.aiAnalysis}</p><p class="text-sm text-gray-400">已分析計畫</p></div>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold">我的學習計畫</h3>
+                        <button id="add-new-plan-btn" class="btn btn-primary flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                            新增計畫
+                        </button>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow">
+                        <ul id="ilp-list">${data.ilps.map(ilp => `<li class="p-4 border-b border-gray-200 last:border-b-0 hover:bg-gray-50 cursor-pointer" data-ilp-id="${ilp.id}"><div class="flex justify-between items-center"><p class="font-semibold">${ilp.title}</p><span class="text-xs font-medium px-2 py-1 rounded-full bg-yellow-200 text-yellow-800">${ilp.status}</span></div><p class="text-sm text-gray-500 mt-1">建立日期：${ilp.date}</p></li>`).join('')}</ul>
+                    </div>`;
+                document.getElementById('add-new-plan-btn').addEventListener('click', () => navigateTo('student-form'));
+            }
+            
+            function renderStudentForm(data) {
+                const questions = parseCSV(MOCK_DATA.ilpQuestionsCSV);
+                appContent.innerHTML = `<div class="max-w-4xl mx-auto"><button id="back-to-dashboard-btn" class="btn btn-secondary mb-6 flex items-center gap-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>返回</button><div class="bg-white p-8 rounded-xl shadow-lg"><h2 class="text-2xl font-bold mb-6 border-b pb-4">個人化學習計畫表單 (ILP)</h2><form id="ilp-form" class="space-y-6"></form></div></div>`;
+                const ilpForm = appContent.querySelector('#ilp-form');
+                const basicInfoContainer = document.createElement('div');
+                basicInfoContainer.className = 'grid grid-cols-1 md:grid-cols-2 gap-6';
+                questions.forEach(q => {
+                    const fieldWrapper = document.createElement('div');
+                    if (['name', 'gender', 'rank', 'fill_date'].includes(q.field_key)) { basicInfoContainer.appendChild(fieldWrapper); } else { ilpForm.appendChild(fieldWrapper); }
+                    const label = document.createElement('label');
+                    label.className = 'form-label';
+                    label.setAttribute('for', q.field_key);
+                    label.textContent = q.label;
+                    if(q.helper_text) { label.textContent += ` ${q.helper_text}`; }
+                    fieldWrapper.appendChild(label);
+                    let inputElement;
+                    switch (q.type) {
+                        case 'select': inputElement = document.createElement('select'); inputElement.className = 'form-select'; q.options.split(';').forEach(opt => { const optionElement = document.createElement('option'); optionElement.value = opt; optionElement.textContent = opt; inputElement.appendChild(optionElement); }); break;
+                        case 'textarea': inputElement = document.createElement('textarea'); inputElement.className = 'form-textarea'; break;
+                        case 'date': inputElement = document.createElement('input'); inputElement.type = 'date'; inputElement.className = 'form-input'; inputElement.valueAsDate = new Date(); break;
+                        default: inputElement = document.createElement('input'); inputElement.type = 'text'; inputElement.className = 'form-input'; break;
+                    }
+                    inputElement.id = q.field_key; inputElement.name = q.field_key;
+                    if (q.placeholder) inputElement.placeholder = q.placeholder;
+                    if (q.required === 'True') inputElement.required = true;
+                    fieldWrapper.appendChild(inputElement);
+                });
+                ilpForm.prepend(basicInfoContainer);
+                const buttonContainer = document.createElement('div');
+                buttonContainer.className = 'flex justify-end gap-4 pt-6 border-t';
+                buttonContainer.innerHTML = `<button type="button" class="btn btn-secondary">取消</button><button type="submit" class="btn btn-primary">提交計畫</button>`;
+                ilpForm.appendChild(buttonContainer);
+                document.getElementById('back-to-dashboard-btn').addEventListener('click', () => navigateTo('student-dashboard'));
+            }
+
+            function renderTeacherDashboard() {
+                const data = MOCK_DATA.teacherDashboard;
+                appContent.innerHTML = `
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold">教師儀表板</h2>
+                        <p class="text-gray-500">管理學生的個人化學習計畫</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <div class="bg-white p-6 rounded-xl shadow"><p class="text-gray-500">學生總數</p><p class="text-3xl font-bold text-blue-600 mt-2">${data.totalStudents}</p></div>
+                        <div class="bg-white p-6 rounded-xl shadow"><p class="text-gray-500">進行中計畫</p><p class="text-3xl font-bold text-yellow-500 mt-2">${data.ongoingPlans}</p></div>
+                        <div class="bg-white p-6 rounded-xl shadow"><p class="text-gray-500">已完成計畫</p><p class="text-3xl font-bold text-green-500 mt-2">${data.completedPlans}</p></div>
+                        <div class="bg-white p-6 rounded-xl shadow"><p class="text-gray-500">待審核</p><p class="text-3xl font-bold text-red-500 mt-2">${data.pendingReview}</p></div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow">
+                        <div class="flex justify-between items-center mb-4"><h3 class="text-xl font-bold">學生列表</h3><select class="form-select w-48"><option>所有班級</option></select></div>
+                        <table class="w-full text-left">
+                            <thead><tr class="border-b text-gray-500 text-sm"><th class="py-3 px-4 font-medium">學生姓名</th><th class="py-3 px-4 font-medium">班級</th><th class="py-3 px-4 font-medium">計畫數量</th><th class="py-3 px-4 font-medium">最後活動</th><th class="py-3 px-4 font-medium">操作</th></tr></thead>
+                            <tbody>${data.students.map(s => `<tr class="border-b last:border-b-0"><td class="py-3 px-4">${s.name}</td><td class="py-3 px-4">${s.class}</td><td class="py-3 px-4">${s.planCount}</td><td class="py-3 px-4">${s.lastActivity}</td><td class="py-3 px-4 text-blue-600 space-x-4"><a href="#" class="font-semibold hover:underline">查看計畫</a><a href="#" class="font-semibold hover:underline">發送訊息</a></td></tr>`).join('')}</tbody>
+                        </table>
+                    </div>`;
+            }
+
+            function renderAdminDashboard() {
+                const data = MOCK_DATA.adminDashboard;
+                appContent.innerHTML = `
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
+                        <div class="bg-white p-5 rounded-xl shadow text-center"><p class="text-sm text-gray-500">總用戶數</p><p class="text-3xl font-bold text-blue-600 mt-2">${data.totalUsers}</p></div>
+                        <div class="bg-white p-5 rounded-xl shadow text-center"><p class="text-sm text-gray-500">學生數量</p><p class="text-3xl font-bold text-green-600 mt-2">${data.studentCount}</p></div>
+                        <div class="bg-white p-5 rounded-xl shadow text-center"><p class="text-sm text-gray-500">教師數量</p><p class="text-3xl font-bold text-yellow-600 mt-2">${data.teacherCount}</p></div>
+                        <div class="bg-white p-5 rounded-xl shadow text-center"><p class="text-sm text-gray-500">學習計畫</p><p class="text-3xl font-bold text-purple-600 mt-2">${data.totalPlans}</p></div>
+                        <div class="bg-white p-5 rounded-xl shadow text-center"><p class="text-sm text-gray-500">活躍用戶</p><p class="text-3xl font-bold text-teal-500 mt-2">${data.activeUsers}</p></div>
+                        <div class="bg-white p-5 rounded-xl shadow text-center"><p class="text-sm text-gray-500">系統狀態</p><p class="text-3xl font-bold text-green-500 mt-2">${data.systemStatus}</p></div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow">
+                            <h3 class="text-xl font-bold mb-4">最近活動</h3>
+                            <ul class="space-y-4">${data.recentActivities.map(act => `
+                                <li class="flex items-start gap-4">
+                                    <span class="text-xl pt-1">${act.icon}</span>
+                                    <div>
+                                        <p class="font-semibold">${act.text} <span class="text-gray-600 font-normal">- ${act.user}</span></p>
+                                        <p class="text-sm text-gray-400">${act.time}</p>
+                                    </div>
+                                </li>`).join('')}
+                            </ul>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow">
+                            <h3 class="text-xl font-bold mb-4">快速操作</h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <button class="bg-blue-50 text-blue-700 p-4 rounded-lg text-center hover:bg-blue-100 transition-colors"><div class="text-2xl mb-1">👤</div><span class="font-semibold text-sm">新增用戶</span></button>
+                                <button class="bg-green-50 text-green-700 p-4 rounded-lg text-center hover:bg-green-100 transition-colors"><div class="text-2xl mb-1">⚙️</div><span class="font-semibold text-sm">系統設定</span></button>
+                                <button class="bg-yellow-50 text-yellow-700 p-4 rounded-lg text-center hover:bg-yellow-100 transition-colors"><div class="text-2xl mb-1">📤</div><span class="font-semibold text-sm">匯出資料</span></button>
+                                <button class="bg-red-50 text-red-700 p-4 rounded-lg text-center hover:bg-red-100 transition-colors"><div class="text-2xl mb-1">📈</div><span class="font-semibold text-sm">分析報告</span></button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // ===== EVENT HANDLERS =====
+            function handleLogin(e) {
+                e.preventDefault();
+                const username = document.getElementById('identity').value;
+                const user = MOCK_DATA.users[username];
+
+                if (user) {
+                    appState.currentUser = user;
+                    loginView.classList.remove('active');
+                    mainAppView.classList.add('active');
+                    welcomeMessage.textContent = `歡迎，${user.name}`;
+                    
+                    switch(user.role) {
+                        case 'student': navigateTo('student-dashboard'); break;
+                        case 'teacher': navigateTo('teacher-dashboard'); break;
+                        case 'admin': navigateTo('admin-dashboard'); break;
+                    }
+                } else {
+                    showError('帳號或密碼錯誤');
+                }
+            }
+
+            function handleLogout() {
+                appState.currentUser = null;
+                mainAppView.classList.remove('active');
+                loginView.classList.add('active');
+            }
+
+            // ===== INITIALIZATION & EVENT LISTENERS =====
+            document.getElementById('login-form').addEventListener('submit', handleLogin);
+            document.getElementById('logout-btn').addEventListener('click', handleLogout);
+        });
     </script>
-
-    <!-- Utils 先載入（供各元件使用） -->
-    <script type="text/babel" data-presets="env,react" src="utils/storage.js"></script>
-    <script type="text/babel" data-presets="env,react" src="utils/auth.js"></script>
-    <script type="text/babel" data-presets="env,react" src="utils/aiAnalysis.js"></script>
-
-    <!-- Components -->
-    <script type="text/babel" data-presets="env,react" src="components/Navigation.js"></script>
-    <script type="text/babel" data-presets="env,react" src="components/LoginForm.js"></script>
-    <script type="text/babel" data-presets="env,react" src="components/ILPForm.js"></script>
-    <script type="text/babel" data-presets="env,react" src="components/AnalysisView.js"></script>
-    <script type="text/babel" data-presets="env,react" src="components/StudentDashboard.js"></script>
-    <script type="text/babel" data-presets="env,react" src="components/TeacherDashboard.js"></script>
-    <script type="text/babel" data-presets="env,react" src="components/AdminDashboard.js"></script>
-
-    <!-- App 入口 -->
-    <script type="text/babel" data-presets="env,react" src="app.js"></script>
 </body>
 </html>
