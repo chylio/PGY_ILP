@@ -89,6 +89,41 @@
 <body>
     <div id="root"></div>
 
+    <!-- 在 file:// 開啟時顯示提示，並做基本健康檢查（不依賴 Babel） -->
+    <script>
+    (function() {
+      function badge(html, bg, border, color) {
+        var box = document.createElement('div');
+        box.style.position = 'fixed';
+        box.style.left = '8px';
+        box.style.right = '8px';
+        box.style.zIndex = '99999';
+        box.style.borderRadius = '8px';
+        box.style.padding = '10px 12px';
+        box.style.fontFamily = 'system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Helvetica, Arial';
+        box.style.background = bg; box.style.border = '1px solid ' + border; box.style.color = color;
+        return box;
+      }
+      if (location.protocol === 'file:') {
+        var warn = badge('', '#fff7ed', '#ffedd5', '#9a3412');
+        warn.style.top = '8px';
+        warn.innerHTML = '偵測到使用 file:// 直接開啟。請改用本機伺服器（例如在專案資料夾執行 <code>python -m http.server 5500</code> 或 <code>npx serve</code>），再前往 <a href="http://localhost:5500/index.html" target="_blank">http://localhost:5500/index.html</a>。否則 Babel 無法載入外部 JSX 檔案，頁面會是空白。';
+        (document.body || document.documentElement).appendChild(warn);
+      }
+      window.addEventListener('load', function(){
+        if (!window.React || !window.ReactDOM || !window.Babel) {
+          var err = badge('', '#fef2f2', '#fee2e2', '#991b1b');
+          err.style.bottom = '8px';
+          err.innerHTML = '偵測到 React/ReactDOM/Babel 可能未成功載入。請確認網路能存取 CDN，或改用以下來源：<br>' +
+            '<code>https://unpkg.com/react@18/umd/react.production.min.js</code><br>' +
+            '<code>https://unpkg.com/react-dom@18/umd/react-dom.production.min.js</code><br>' +
+            '<code>https://unpkg.com/@babel/standalone/babel.min.js</code>';
+          (document.body || document.documentElement).appendChild(err);
+        }
+      });
+    })();
+    </script>
+
     <!-- Utils 先載入（供各元件使用） -->
     <script type="text/babel" data-presets="env,react" src="utils/storage.js"></script>
     <script type="text/babel" data-presets="env,react" src="utils/auth.js"></script>
