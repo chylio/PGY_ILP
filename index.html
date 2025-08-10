@@ -1,399 +1,2099 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>個人化學習計畫 (ILP) 平台</title>
-    <!-- Chosen Palette: Professional & Clean (Blue, Grays, White) -->
-    <!-- Application Structure Plan: A single-page application (SPA) with a new login-first architecture. The initial view is a login form. Upon successful "login," the view switches to the student's main dashboard, which serves as the central hub. From the dashboard, the user can navigate to other "pages" like the ILP form or analysis reports. This is managed by dynamically showing/hiding different content sections (divs) instead of reloading the page, creating a seamless multi-page experience within a single HTML file. This structure directly implements the user flow shown in the provided images. -->
-    <!-- Visualization & Content Choices: 
-        - Login Form (Goal: Authentication): A standard, clean form as per the user's image.
-        - Student Dashboard (Goal: Overview/Navigation): Uses stat cards for key metrics and a list of existing ILPs. A prominent "New Plan" button serves as the primary call-to-action. This replaces the old role-selection screen with a more functional, data-driven entry point.
-        - ILP Form (Goal: Data Entry): A clean, single-column form within a card, matching the user's provided design for a professional and focused data entry experience.
-        - Teacher Dashboard (Goal: Review/Manage): Implements the user-provided design with stat cards and an interactive student list for efficient management.
-        - Admin Dashboard (Goal: Monitor/Manage): Implements the user-provided design with high-level stat cards, a recent activity feed, and quick action buttons for system-wide management.
-        - All interactions are handled with vanilla JavaScript to update the DOM dynamically. -->
-    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', 'Noto Sans TC', sans-serif;
-            background-color: #f8f9fa;
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>個人化學習計畫 (ILP) 平台</title>
+
+  <script>
+    tailwind = { config: {} };
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: { 50:"#f0f9ff",100:"#e0f2fe",200:"#bae6fd",300:"#7dd3fc",400:"#38bdf8",500:"#0ea5e9",600:"#0284c7",700:"#0369a1",800:"#075985",900:"#0c4a6e" },
+            accent:  { 50:"#f5f3ff",100:"#ede9fe",200:"#ddd6fe",300:"#c4b5fd",400:"#a78bfa",500:"#8b5cf6",600:"#7c3aed",700:"#6d28d9",800:"#5b21b6",900:"#4c1d95" },
+            teal:    { 50:"#f0fdfa",100:"#ccfbf1",200:"#99f6e4",300:"#5eead4",400:"#2dd4bf",500:"#14b8a6",600:"#0d9488",700:"#0f766e",800:"#115e59",900:"#134e4a" },
+            rose:    { 50:"#fff1f2",600:"#e11d48" },
+            amber:   { 50:"#fffbeb",600:"#d97706" },
+            emerald: { 50:"#ecfdf5",600:"#059669" }
+          },
+          fontFamily: { sans: ['Inter','Noto Sans TC','ui-sans-serif','system-ui','sans-serif'] },
+          borderRadius: { xl: "14px" }
         }
-        .view { display: none; }
-        .view.active { display: block; }
-        .form-label { @apply block text-gray-700 text-sm font-medium mb-2; }
-        .form-input, .form-textarea, .form-select { @apply bg-white border border-gray-300 rounded-md w-full py-2.5 px-3 text-gray-800 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200; }
-        .form-textarea { @apply h-32 resize-none; }
-        .btn { @apply font-semibold py-2 px-5 rounded-lg focus:outline-none focus:shadow-outline transition-all duration-300; }
-        .btn-primary { @apply bg-blue-600 hover:bg-blue-700 text-white; }
-        .btn-secondary { @apply bg-gray-200 hover:bg-gray-300 text-gray-700; }
-        .chart-container { position: relative; width: 100%; max-width: 800px; margin-left: auto; margin-right: auto; height: 400px; max-height: 50vh; }
-    </style>
+      }
+    }
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      background:
+        radial-gradient(1200px 700px at -10% -10%, rgba(14,165,233,0.10), rgba(139,92,246,0) 60%),
+        radial-gradient(1200px 700px at 110% -20%, rgba(139,92,246,0.10), rgba(14,165,233,0) 60%),
+        #f7fafc;
+    }
+    .view { display: none; }
+    .view.active { display: block; }
+    .drawer { width: 360px; max-width: 90vw; }
+    .modal { display:none; }
+    .modal.active { display:flex; }
+  </style>
 </head>
-<body class="text-gray-800">
+<body class="font-sans text-gray-800">
+  <div class="h-1 w-full bg-gradient-to-r from-primary-400 via-accent-400 to-primary-400"></div>
 
-    <div id="app" class="container mx-auto p-4 sm:p-6 md:p-8">
-
-        <!-- ===== Login View ===== -->
-        <div id="login-view" class="view active">
-            <div class="max-w-md mx-auto mt-10">
-                <header class="mb-8 text-center">
-                    <h1 class="text-3xl font-bold text-blue-600">ILP 學習平台</h1>
-                    <p class="text-gray-500 mt-2">個人化學習計畫管理系統</p>
-                </header>
-                <div class="bg-white p-8 rounded-xl shadow-lg">
-                    <form id="login-form" class="space-y-6">
-                        <div>
-                            <label for="identity" class="form-label">身份</label>
-                            <select id="identity" name="identity" class="form-select">
-                                <option value="student1">學生</option>
-                                <option value="teacher1">教師</option>
-                                <option value="admin1">管理者</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="password" class="form-label">密碼</label>
-                            <input type="password" id="password" name="password" class="form-input" placeholder="請輸入密碼" value="password">
-                        </div>
-                        <button type="submit" class="btn btn-primary w-full !py-3">登入</button>
-                    </form>
-                </div>
-            </div>
+  <div id="app" class="min-h-screen">
+    <header class="bg-white/90 backdrop-blur border-b border-slate-200">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="h-9 w-9 rounded-lg bg-primary-100 grid place-items-center text-primary-700" aria-hidden="true">🎓</div>
+          <h1 class="text-lg sm:text-xl font-semibold text-primary-700">ILP 學習平台</h1>
+          <span class="hidden sm:inline ml-2 text-xs px-2 py-1 rounded-full bg-accent-50 text-accent-700 border border-accent-200">清新教育主題</span>
         </div>
-
-        <!-- ===== Main Application View (For Logged-in Users) ===== -->
-        <div id="main-app-view" class="view max-w-7xl mx-auto">
-            <header class="flex justify-between items-center mb-8 pb-4 border-b border-gray-200">
-                <div class="flex items-center gap-6">
-                    <h1 class="text-2xl font-bold text-blue-600">ILP 學習平台</h1>
-                    <nav id="main-nav" class="flex gap-4">
-                        <!-- Nav links will be injected here -->
-                    </nav>
-                </div>
-                <div class="flex items-center gap-4">
-                    <span id="welcome-message" class="text-gray-600"></span>
-                    <button id="logout-btn" class="btn btn-secondary">登出</button>
-                </div>
-            </header>
-            <main id="app-content">
-                <!-- Content for each role's pages will be injected here -->
-            </main>
+        <div class="flex items-center gap-3">
+          <span id="welcome-message" class="hidden sm:inline text-gray-600" aria-live="polite"></span>
+          <button id="logout-btn" class="hidden text-sm px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors" aria-label="登出">登出</button>
         </div>
+      </div>
+    </header>
 
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <!-- Login -->
+      <div id="login-view" class="view active">
+        <div class="max-w-md mx-auto">
+          <section class="text-center mb-8">
+            <p class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-50 text-accent-700 text-sm border border-accent-200">
+              <span>📚</span> 管理者 / 教師 / 學生（人事號/密碼）
+            </p>
+            <h2 class="text-2xl font-bold mt-3">個人化學習計畫管理系統</h2>
+            <p class="text-gray-500 mt-2">學生採「人事號 + 密碼」登入；登入後自動帶入導師。</p>
+          </section>
+
+          <div class="bg-white border border-slate-200 rounded-xl p-6">
+            <form id="login-form" class="space-y-5" novalidate>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2" for="login-mode">登入身分</label>
+                <select id="login-mode" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-400" aria-label="選擇登入身分">
+                  <option value="teacher">教師登入（人事號/密碼）</option>
+                  <option value="student">學生登入（人事號/密碼）</option>
+                  <option value="admin">管理者登入（人事號/密碼）</option>
+                </select>
+              </div>
+
+              <div id="teacher-fields" class="space-y-4">
+                <div>
+                  <label for="teacher-login" class="block text-sm font-medium text-gray-700 mb-2">人事號（login_id）</label>
+                  <input id="teacher-login" type="text" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-400" placeholder="例如：A60833 或 940963" aria-label="人事號">
+                </div>
+                <div>
+                  <label for="teacher-password" class="block text-sm font-medium text-gray-700 mb-2">密碼</label>
+                  <input id="teacher-password" type="password" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-400" placeholder="請輸入密碼" aria-label="密碼">
+                </div>
+              </div>
+
+              <div id="student-fields" class="space-y-4 hidden">
+                <div>
+                  <label for="student-login" class="block text-sm font-medium text-gray-700 mb-2">學生人事號（login_id）</label>
+                  <input id="student-login" type="text" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-400" placeholder="例如：B40845" aria-label="學生人事號">
+                </div>
+                <div>
+                  <label for="student-password" class="block text-sm font-medium text-gray-700 mb-2">密碼</label>
+                  <input id="student-password" type="password" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-400" placeholder="請輸入密碼" aria-label="學生密碼">
+                  <p class="text-xs text-gray-500 mt-1">示範預設：密碼與人事號相同（可用 CSV 匯入修改）。</p>
+                </div>
+              </div>
+
+              <button type="submit" id="login-submit" data-cta="outline" class="w-full rounded-lg font-semibold py-2.5 transition-colors border border-primary-300" aria-label="登入">登入</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- App -->
+      <div id="main-app-view" class="view">
+        <nav id="main-nav" class="flex flex-wrap gap-2 mb-6"></nav>
+        <div id="app-content"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Error toast -->
+  <div id="error-box" class="hidden fixed top-5 right-5 bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-lg shadow" role="alert" aria-live="assertive">
+    <strong class="font-semibold">發生錯誤：</strong>
+    <span id="error-message" class="ml-1 align-middle"></span>
+  </div>
+
+  <!-- Drawer -->
+  <div id="ai-drawer" class="hidden fixed top-0 right-0 h-full drawer bg-white border-l border-slate-200 shadow-xl z-40" aria-modal="true" role="dialog" aria-label="AI 導師與追蹤">
+    <div class="h-16 px-4 flex items-center justify-between border-b border-slate-200">
+      <div class="flex items-center gap-2">
+        <span class="text-primary-700" aria-hidden="true">🤖</span>
+        <h3 class="font-semibold">里程碑與追蹤</h3>
+      </div>
+      <button id="ai-drawer-close" class="p-2 rounded hover:bg-gray-100" aria-label="關閉側欄">✕ 關閉</button>
     </div>
-    
-    <div id="error-box" class="hidden fixed top-5 right-5 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow-lg" role="alert">
-      <strong class="font-bold">發生錯誤！</strong>
-      <span id="error-message" class="block sm:inline"></span>
+    <div class="p-4 space-y-4 overflow-y-auto h-[calc(100%-4rem)]">
+      <div class="rounded-lg bg-primary-50/60 border border-primary-100 p-3 text-sm text-primary-800">
+        提醒：AI 導師會在「提交計畫」時自動產生建議；此處僅提供里程碑追蹤。
+      </div>
+      <div class="border-t pt-4">
+        <h4 class="font-medium mb-2">里程碑</h4>
+        <div class="flex gap-2 mb-2">
+          <input id="milestone-input" type="text" placeholder="輸入里程碑..." class="flex-1 rounded border border-gray-300 px-3 py-2" aria-label="里程碑內容">
+          <button id="milestone-add" data-cta="primary" class="px-3 py-2 rounded text-sm" aria-label="新增里程碑">新增</button>
+        </div>
+        <ul id="milestone-list" class="space-y-2"></ul>
+      </div>
     </div>
+  </div>
 
-    <!-- Templates for dynamic content will go here -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            // ===== DATA (Mock Database) =====
-            const MOCK_DATA = {
-                users: {
-                    student1: { role: 'student', name: '王小明' },
-                    teacher1: { role: 'teacher', name: '陳老師' },
-                    admin1: { role: 'admin', name: '系統管理員' },
-                },
-                ilpQuestionsCSV: `field_key,label,type,options,required,placeholder,helper_text
-name,姓名,text,,True,王小明,,
-gender,性別,select,"男;女;其他",True,,
-rank,職級/班級,text,,True,PGY-1,,
-fill_date,填寫日期,date,,True,,
-goal,學習目標一,textarea,,True,請描述您的學習目標...,(你想學什麼？)
-motivation,學習動機,textarea,,True,請描述您的學習動機...,(什麼事件誘發你想要學這個？)
-strategy,學習策略,textarea,,False,請描述您的學習策略...,(你需要做什麼？)
-resources,學習資源,textarea,,False,請描述所需的資源...,(需要誰的幫忙或什麼設備？)
-challenges,可能遭遇的困難,textarea,,False,請預想可能遇到的困難...,
-assessment,評估內容與指標,textarea,,True,請描述評估方式和成功指標...,(怎麼樣才能證明你達到你的學習目標？)
-timeline,預計時程,text,,True,"例如：3個月、半年...",(這部分的學習預計多久達成？)`,
-                studentDashboard: {
-                    plans: 1,
-                    completionRate: '0%',
-                    aiAnalysis: 0,
-                    ilps: [
-                        { id: 1, title: '提升值班處理緊急狀況的能力', status: '草稿', date: '2025/8/9' }
-                    ]
-                },
-                teacherDashboard: {
-                    totalStudents: 4,
-                    ongoingPlans: 8,
-                    completedPlans: 2,
-                    pendingReview: 3,
-                    students: [
-                        { name: '王小明', class: '三年一班', planCount: 3, lastActivity: '2024/1/15' },
-                        { name: '李小華', class: '三年一班', planCount: 2, lastActivity: '2024/1/14' },
-                        { name: '張小美', class: '三年二班', planCount: 4, lastActivity: '2024/1/16' },
-                        { name: '陳小強', class: '三年二班', planCount: 1, lastActivity: '2024/1/13' },
-                    ]
-                },
-                adminDashboard: {
-                    totalUsers: 156,
-                    studentCount: 142,
-                    teacherCount: 12,
-                    totalPlans: 284,
-                    activeUsers: 89,
-                    systemStatus: '正常',
-                    recentActivities: [
-                        { icon: '➡️', text: '學生登入系統', user: '王小明', time: '2024-01-16 14:30' },
-                        { icon: '📝', text: '建立新學習計畫', user: '李小華', time: '2024-01-16 14:25' },
-                        { icon: '💡', text: '完成計畫分析', user: 'AI系統', time: '2024-01-16 14:20' },
-                        { icon: '➡️', text: '教師登入系統', user: '陳老師', time: '2024-01-16 14:15' },
-                        { icon: '🔄', text: '更新學習計畫', user: '張小美', time: '2024-01-16 14:10' },
-                    ]
-                }
-            };
+  <!-- Modal -->
+  <div id="review-modal" class="modal fixed inset-0 bg-black/40 items-center justify-center z-50" aria-modal="true" role="dialog" aria-label="審核視窗">
+    <div class="bg-white max-w-[1000px] w-[95vw] max-height-[90vh] max-h-[90vh] rounded-xl shadow-xl overflow-hidden flex flex-col">
+      <div class="h-14 px-5 flex items-center justify-between border-b border-slate-200">
+        <div class="flex items-center gap-2">
+          <span id="review-modal-icon" aria-hidden="true">📝</span>
+          <h3 id="review-modal-title" class="font-semibold">審核計畫</h3>
+        </div>
+        <button id="review-modal-close" class="p-2 rounded hover:bg-gray-100" aria-label="關閉審核視窗">✕ 關閉</button>
+      </div>
+      <div id="review-modal-body" class="p-5 overflow-y-auto grow"></div>
+      <div id="review-modal-footer" class="p-4 border-t border-slate-200 flex items-center justify-between">
+        <div class="text-xs text-gray-500" id="review-modal-hint">教師可在此撰寫回饋，並標記是否已達成共識。</div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="btn-ai-for-teacher" data-cta="card" class="px-3 py-2 text-sm" aria-label="AI 教師回饋">AI教師回饋</button>
+          <button id="btn-submit-feedback" data-cta="card" class="px-4 py-2" aria-label="送出">送出</button>
+          <button id="btn-close-modal" data-cta="card" class="px-4 py-2" aria-label="取消">取消</button>
+          <button id="btn-save-feedback-draft" class="hidden"></button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-            // ===== STATE MANAGEMENT =====
-            let appState = {
-                currentUser: null,
-                currentView: 'login',
-            };
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // CSV defaults/templates
+      const CSV_STUDENT_TEACHER_DEFAULT = `student_name,login_id,initial_password,student_class_or_level,teacher_name
+陳建廷,B40845,B40845,PGY1,郭妍伶
+高品霓,B40831,B40831,PGY1,陳伯榕
+林向宏,B40835,B40835,PGY1,郭妍伶
+吳婕寧,B408H2,B408H2,PGY1,陳伯榕
+`;
+      const CSV_ILP_FIELDS_DEFAULT = `field_key,label,type,options,required
+name,姓名,text,,TRUE
+gender,性別,select,男;女;其他/不透露,TRUE
+rank,職級,select,醫學生;PGY-1;PGY-2;住院醫師;總醫師;主治醫師;護理師;其他,TRUE
+fill_date,填寫日期,date,,TRUE
+goal,學習目標一（你想學什麼？）,textarea,,TRUE
+motivation,學習動機（什麼事件誘發你想要學這個？）,textarea,,TRUE
+strategy,策略（你需要做什麼？）,textarea,,FALSE
+resources,資源（需要誰的幫忙或什麼設備？）,textarea,,FALSE
+challenges,可能遭遇的困難,textarea,,FALSE
+assessment,評估內容與指標（怎麼樣才能證明你達到你的學習目標？）,textarea,,TRUE
+timeline,預計時程（這部分的學習預計多久達成？）,text,,TRUE
+`;
+      const CSV_TEACHERS_DEFAULT = `teacher_name,login_id,initial_password
+郭妍伶,940963,940963
+陳伯榕,A60833,A60833
+廖家德,980911,980911
+吳曉琪,A00924,A00924
+`;
+      const CSV_TEACHERS_TEMPLATE = `teacher_name,login_id,initial_password
+`;
+      const CSV_STUDENTS_TEMPLATE = `student_name,login_id,initial_password,student_class_or_level,teacher_name
+`;
+      const CSV_ADMINS_TEMPLATE = `admin_name,login_id,initial_password
+`;
 
-            // ===== DOM ELEMENTS =====
-            const loginView = document.getElementById('login-view');
-            const mainAppView = document.getElementById('main-app-view');
-            const appContent = document.getElementById('app-content');
-            const mainNav = document.getElementById('main-nav');
-            const welcomeMessage = document.getElementById('welcome-message');
+      // DOM refs
+      const loginView   = document.getElementById('login-view');
+      const mainAppView = document.getElementById('main-app-view');
+      const appContent  = document.getElementById('app-content');
+      const mainNav     = document.getElementById('main-nav');
+      const welcomeText = document.getElementById('welcome-message');
+      const logoutBtn   = document.getElementById('logout-btn');
 
-            // ===== UTILITY FUNCTIONS =====
-            function showError(message) {
-                const errorBox = document.getElementById('error-box');
-                const errorMessage = document.getElementById('error-message');
-                errorMessage.textContent = message;
-                errorBox.classList.remove('hidden');
-                setTimeout(() => errorBox.classList.add('hidden'), 5000);
-            }
-            
-            function parseCSV(csvText) {
-                const lines = csvText.trim().split('\n');
-                const headers = lines[0].split(',');
-                return lines.slice(1).map(line => {
-                    const values = line.match(/(".*?"|[^",\r\n]+)(?=\s*,|\s*$)/g).map(v => v.replace(/"/g, ''));
-                    return headers.reduce((obj, header, index) => {
-                        obj[header.trim()] = values[index] ? values[index].trim() : '';
-                        return obj;
-                    }, {});
-                });
-            }
+      const loginModeSel = document.getElementById('login-mode');
+      const teacherFields = document.getElementById('teacher-fields');
+      const studentFields = document.getElementById('student-fields');
+      const studentLoginInput = document.getElementById('student-login');
+      const studentPasswordInput = document.getElementById('student-password');
 
-            // ===== VIEW SWITCHING & RENDERING =====
-            function navigateTo(view, data = null) {
-                appState.currentView = view;
-                appContent.innerHTML = '';
-                updateNav();
+      const aiDrawer = document.getElementById('ai-drawer');
 
-                switch (view) {
-                    case 'student-dashboard': renderStudentDashboard(); break;
-                    case 'student-form': renderStudentForm(data); break;
-                    case 'teacher-dashboard': renderTeacherDashboard(); break;
-                    case 'admin-dashboard': renderAdminDashboard(); break;
-                }
-            }
-            
-            function updateNav() {
-                mainNav.innerHTML = '';
-                let navItems = [];
+      const reviewModal = document.getElementById('review-modal');
+      const reviewModalBody = document.getElementById('review-modal-body');
+      const reviewModalTitle = document.getElementById('review-modal-title');
+      const reviewModalIcon = document.getElementById('review-modal-icon');
+      const reviewModalHint = document.getElementById('review-modal-hint');
 
-                if (!appState.currentUser) return;
+      const btnAiForTeacher = document.getElementById('btn-ai-for-teacher');
+      const btnSubmitFeedback = document.getElementById('btn-submit-feedback');
+      const btnCloseModal = document.getElementById('btn-close-modal');
+      document.getElementById('review-modal-close').addEventListener('click', closeReviewModal);
 
-                switch (appState.currentUser.role) {
-                    case 'student':
-                        navItems = [
-                            { name: '我的計畫', view: 'student-dashboard' },
-                            { name: '分析報告', view: 'student-report' }
-                        ];
-                        break;
-                    case 'teacher':
-                        navItems = [
-                            { name: '學生管理', view: 'teacher-dashboard' },
-                            { name: '分析統計', view: 'teacher-analytics' }
-                        ];
-                        break;
-                    case 'admin':
-                        navItems = [
-                            { name: '系統總覽', view: 'admin-dashboard' },
-                            { name: '用戶管理', view: 'admin-users' }
-                        ];
-                        break;
-                }
+      document.getElementById('ai-drawer-close')?.addEventListener('click', closeAiDrawer);
 
-                navItems.forEach(item => {
-                    const link = document.createElement('a');
-                    link.href = '#';
-                    link.textContent = item.name;
-                    link.className = `px-3 py-2 rounded-md text-sm font-medium transition-colors ${appState.currentView === item.view ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-100'}`;
-                    link.onclick = (e) => { e.preventDefault(); navigateTo(item.view); };
-                    mainNav.appendChild(link);
-                });
-            }
+      // STATE
+      let DATA = null;
+      let appState = {
+        currentUser: null,
+        currentView: 'login',
+        currentILP: null,
+        settings: {
+          aiProvider:'local',
+          useLocalRules:true,
+          googleUrl:'https://script.google.com/macros/s/AKfycbxMKGvQHL4GZQUdE0AUGyw2nw65YAe6OqW7mD5oivdrkBZ9EXryH2F0MIjCx3qzSB58/exec',
+          googleToken:''
+        },
+        admins: []
+      };
 
-            function renderStudentDashboard() {
-                const data = MOCK_DATA.studentDashboard;
-                appContent.innerHTML = `
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-2xl font-bold">歡迎回來，${appState.currentUser.name}</h2>
-                        <p class="text-gray-500">管理您的個人化學習計畫</p>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                        <div class="bg-white p-6 rounded-xl shadow flex items-center gap-4">
-                            <div class="bg-blue-100 p-3 rounded-lg"><span class="text-2xl">📘</span></div>
-                            <div><p class="text-gray-500">學習計畫</p><p class="text-2xl font-bold">${data.plans}</p><p class="text-sm text-gray-400">已建立計畫</p></div>
-                        </div>
-                        <div class="bg-white p-6 rounded-xl shadow flex items-center gap-4">
-                            <div class="bg-green-100 p-3 rounded-lg"><span class="text-2xl">📈</span></div>
-                            <div><p class="text-gray-500">完成率</p><p class="text-2xl font-bold">${data.completionRate}</p><p class="text-sm text-gray-400">計畫達成率</p></div>
-                        </div>
-                        <div class="bg-white p-6 rounded-xl shadow flex items-center gap-4">
-                            <div class="bg-yellow-100 p-3 rounded-lg"><span class="text-2xl">💡</span></div>
-                            <div><p class="text-gray-500">AI 分析</p><p class="text-2xl font-bold">${data.aiAnalysis}</p><p class="text-sm text-gray-400">已分析計畫</p></div>
-                        </div>
-                    </div>
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-xl font-bold">我的學習計畫</h3>
-                        <button id="add-new-plan-btn" class="btn btn-primary flex items-center gap-2">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                            新增計畫
-                        </button>
-                    </div>
-                    <div class="bg-white p-4 rounded-xl shadow">
-                        <ul id="ilp-list">${data.ilps.map(ilp => `<li class="p-4 border-b border-gray-200 last:border-b-0 hover:bg-gray-50 cursor-pointer" data-ilp-id="${ilp.id}"><div class="flex justify-between items-center"><p class="font-semibold">${ilp.title}</p><span class="text-xs font-medium px-2 py-1 rounded-full bg-yellow-200 text-yellow-800">${ilp.status}</span></div><p class="text-sm text-gray-500 mt-1">建立日期：${ilp.date}</p></li>`).join('')}</ul>
-                    </div>`;
-                document.getElementById('add-new-plan-btn').addEventListener('click', () => navigateTo('student-form'));
-            }
-            
-            function renderStudentForm(data) {
-                const questions = parseCSV(MOCK_DATA.ilpQuestionsCSV);
-                appContent.innerHTML = `<div class="max-w-4xl mx-auto"><button id="back-to-dashboard-btn" class="btn btn-secondary mb-6 flex items-center gap-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>返回</button><div class="bg-white p-8 rounded-xl shadow-lg"><h2 class="text-2xl font-bold mb-6 border-b pb-4">個人化學習計畫表單 (ILP)</h2><form id="ilp-form" class="space-y-6"></form></div></div>`;
-                const ilpForm = appContent.querySelector('#ilp-form');
-                const basicInfoContainer = document.createElement('div');
-                basicInfoContainer.className = 'grid grid-cols-1 md:grid-cols-2 gap-6';
-                questions.forEach(q => {
-                    const fieldWrapper = document.createElement('div');
-                    if (['name', 'gender', 'rank', 'fill_date'].includes(q.field_key)) { basicInfoContainer.appendChild(fieldWrapper); } else { ilpForm.appendChild(fieldWrapper); }
-                    const label = document.createElement('label');
-                    label.className = 'form-label';
-                    label.setAttribute('for', q.field_key);
-                    label.textContent = q.label;
-                    if(q.helper_text) { label.textContent += ` ${q.helper_text}`; }
-                    fieldWrapper.appendChild(label);
-                    let inputElement;
-                    switch (q.type) {
-                        case 'select': inputElement = document.createElement('select'); inputElement.className = 'form-select'; q.options.split(';').forEach(opt => { const optionElement = document.createElement('option'); optionElement.value = opt; optionElement.textContent = opt; inputElement.appendChild(optionElement); }); break;
-                        case 'textarea': inputElement = document.createElement('textarea'); inputElement.className = 'form-textarea'; break;
-                        case 'date': inputElement = document.createElement('input'); inputElement.type = 'date'; inputElement.className = 'form-input'; inputElement.valueAsDate = new Date(); break;
-                        default: inputElement = document.createElement('input'); inputElement.type = 'text'; inputElement.className = 'form-input'; break;
-                    }
-                    inputElement.id = q.field_key; inputElement.name = q.field_key;
-                    if (q.placeholder) inputElement.placeholder = q.placeholder;
-                    if (q.required === 'True') inputElement.required = true;
-                    fieldWrapper.appendChild(inputElement);
-                });
-                ilpForm.prepend(basicInfoContainer);
-                const buttonContainer = document.createElement('div');
-                buttonContainer.className = 'flex justify-end gap-4 pt-6 border-t';
-                buttonContainer.innerHTML = `<button type="button" class="btn btn-secondary">取消</button><button type="submit" class="btn btn-primary">提交計畫</button>`;
-                ilpForm.appendChild(buttonContainer);
-                document.getElementById('back-to-dashboard-btn').addEventListener('click', () => navigateTo('student-dashboard'));
-            }
-
-            function renderTeacherDashboard() {
-                const data = MOCK_DATA.teacherDashboard;
-                appContent.innerHTML = `
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-2xl font-bold">教師儀表板</h2>
-                        <p class="text-gray-500">管理學生的個人化學習計畫</p>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                        <div class="bg-white p-6 rounded-xl shadow"><p class="text-gray-500">學生總數</p><p class="text-3xl font-bold text-blue-600 mt-2">${data.totalStudents}</p></div>
-                        <div class="bg-white p-6 rounded-xl shadow"><p class="text-gray-500">進行中計畫</p><p class="text-3xl font-bold text-yellow-500 mt-2">${data.ongoingPlans}</p></div>
-                        <div class="bg-white p-6 rounded-xl shadow"><p class="text-gray-500">已完成計畫</p><p class="text-3xl font-bold text-green-500 mt-2">${data.completedPlans}</p></div>
-                        <div class="bg-white p-6 rounded-xl shadow"><p class="text-gray-500">待審核</p><p class="text-3xl font-bold text-red-500 mt-2">${data.pendingReview}</p></div>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl shadow">
-                        <div class="flex justify-between items-center mb-4"><h3 class="text-xl font-bold">學生列表</h3><select class="form-select w-48"><option>所有班級</option></select></div>
-                        <table class="w-full text-left">
-                            <thead><tr class="border-b text-gray-500 text-sm"><th class="py-3 px-4 font-medium">學生姓名</th><th class="py-3 px-4 font-medium">班級</th><th class="py-3 px-4 font-medium">計畫數量</th><th class="py-3 px-4 font-medium">最後活動</th><th class="py-3 px-4 font-medium">操作</th></tr></thead>
-                            <tbody>${data.students.map(s => `<tr class="border-b last:border-b-0"><td class="py-3 px-4">${s.name}</td><td class="py-3 px-4">${s.class}</td><td class="py-3 px-4">${s.planCount}</td><td class="py-3 px-4">${s.lastActivity}</td><td class="py-3 px-4 text-blue-600 space-x-4"><a href="#" class="font-semibold hover:underline">查看計畫</a><a href="#" class="font-semibold hover:underline">發送訊息</a></td></tr>`).join('')}</tbody>
-                        </table>
-                    </div>`;
-            }
-
-            function renderAdminDashboard() {
-                const data = MOCK_DATA.adminDashboard;
-                appContent.innerHTML = `
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
-                        <div class="bg-white p-5 rounded-xl shadow text-center"><p class="text-sm text-gray-500">總用戶數</p><p class="text-3xl font-bold text-blue-600 mt-2">${data.totalUsers}</p></div>
-                        <div class="bg-white p-5 rounded-xl shadow text-center"><p class="text-sm text-gray-500">學生數量</p><p class="text-3xl font-bold text-green-600 mt-2">${data.studentCount}</p></div>
-                        <div class="bg-white p-5 rounded-xl shadow text-center"><p class="text-sm text-gray-500">教師數量</p><p class="text-3xl font-bold text-yellow-600 mt-2">${data.teacherCount}</p></div>
-                        <div class="bg-white p-5 rounded-xl shadow text-center"><p class="text-sm text-gray-500">學習計畫</p><p class="text-3xl font-bold text-purple-600 mt-2">${data.totalPlans}</p></div>
-                        <div class="bg-white p-5 rounded-xl shadow text-center"><p class="text-sm text-gray-500">活躍用戶</p><p class="text-3xl font-bold text-teal-500 mt-2">${data.activeUsers}</p></div>
-                        <div class="bg-white p-5 rounded-xl shadow text-center"><p class="text-sm text-gray-500">系統狀態</p><p class="text-3xl font-bold text-green-500 mt-2">${data.systemStatus}</p></div>
-                    </div>
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow">
-                            <h3 class="text-xl font-bold mb-4">最近活動</h3>
-                            <ul class="space-y-4">${data.recentActivities.map(act => `
-                                <li class="flex items-start gap-4">
-                                    <span class="text-xl pt-1">${act.icon}</span>
-                                    <div>
-                                        <p class="font-semibold">${act.text} <span class="text-gray-600 font-normal">- ${act.user}</span></p>
-                                        <p class="text-sm text-gray-400">${act.time}</p>
-                                    </div>
-                                </li>`).join('')}
-                            </ul>
-                        </div>
-                        <div class="bg-white p-6 rounded-xl shadow">
-                            <h3 class="text-xl font-bold mb-4">快速操作</h3>
-                            <div class="grid grid-cols-2 gap-4">
-                                <button class="bg-blue-50 text-blue-700 p-4 rounded-lg text-center hover:bg-blue-100 transition-colors"><div class="text-2xl mb-1">👤</div><span class="font-semibold text-sm">新增用戶</span></button>
-                                <button class="bg-green-50 text-green-700 p-4 rounded-lg text-center hover:bg-green-100 transition-colors"><div class="text-2xl mb-1">⚙️</div><span class="font-semibold text-sm">系統設定</span></button>
-                                <button class="bg-yellow-50 text-yellow-700 p-4 rounded-lg text-center hover:bg-yellow-100 transition-colors"><div class="text-2xl mb-1">📤</div><span class="font-semibold text-sm">匯出資料</span></button>
-                                <button class="bg-red-50 text-red-700 p-4 rounded-lg text-center hover:bg-red-100 transition-colors"><div class="text-2xl mb-1">📈</div><span class="font-semibold text-sm">分析報告</span></button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-
-            // ===== EVENT HANDLERS =====
-            function handleLogin(e) {
-                e.preventDefault();
-                const username = document.getElementById('identity').value;
-                const user = MOCK_DATA.users[username];
-
-                if (user) {
-                    appState.currentUser = user;
-                    loginView.classList.remove('active');
-                    mainAppView.classList.add('active');
-                    welcomeMessage.textContent = `歡迎，${user.name}`;
-                    
-                    switch(user.role) {
-                        case 'student': navigateTo('student-dashboard'); break;
-                        case 'teacher': navigateTo('teacher-dashboard'); break;
-                        case 'admin': navigateTo('admin-dashboard'); break;
-                    }
-                } else {
-                    showError('帳號或密碼錯誤');
-                }
-            }
-
-            function handleLogout() {
-                appState.currentUser = null;
-                mainAppView.classList.remove('active');
-                loginView.classList.add('active');
-            }
-
-            // ===== INITIALIZATION & EVENT LISTENERS =====
-            document.getElementById('login-form').addEventListener('submit', handleLogin);
-            document.getElementById('logout-btn').addEventListener('click', handleLogout);
+      // Buttons styling/labels
+      function applyFreshStyles(root=document) {
+        const presets = {
+          primary: 'bg-gradient-to-r from-primary-500 to-teal-500 text-white shadow hover:shadow-md active:scale-[0.98]',
+          accent:  'bg-accent-500 text-white shadow hover:bg-accent-600 active:scale-[0.98]',
+          outline: 'bg-white text-primary-700 border border-primary-200 hover:bg-primary-50 active:scale-[0.98]',
+          success: 'bg-emerald-600 text-white shadow hover:bg-emerald-700 active:scale-[0.98]',
+          danger:  'bg-rose-600 text-white shadow hover:bg-rose-700 active:scale-[0.98]',
+          card:    'bg-white border border-slate-200 shadow-sm hover:shadow text-primary-900 active:scale-[0.98]'
+        };
+        root.querySelectorAll('button[data-cta]').forEach(b=>{
+          const t = b.getAttribute('data-cta');
+          b.classList.add('rounded-lg','transition','duration-150','px-3','py-2','font-medium');
+          b.classList.remove('text-white','text-gray-700','text-primary-700','bg-white');
+          (presets[t]||'').split(' ').forEach(c=> c && b.classList.add(c));
+          if (t === 'outline' || t === 'card') b.style.color = '#0c4a6e';
+          if (t === 'primary' || t === 'accent' || t === 'success' || t === 'danger') b.style.color = '#fff';
+          if (b.id === 'login-submit') { b.setAttribute('data-cta','outline'); b.style.color = '#0c4a6e'; b.classList.add('border','border-primary-300'); }
+          // 特別規則：學生「建立/編輯學習計畫」的送出按鈕字體改為深藍色（保持其他設計不變）
+          if (b.id === 'submit-ilp-btn') { b.style.color = '#0c4a6e'; }
         });
-    </script>
+      }
+      function ensureButtonLabels(root=document) {
+        const map = {
+          'login-submit': '登入','logout-btn':'登出','add-new-plan-btn':'新增計畫',
+          'open-ai-drawer':'里程碑與追蹤','back-to-dashboard-btn':'返回','cancel-form-btn':'取消',
+          'submit-ilp-btn':'提交計畫','milestone-add':'新增','btn-ai-for-teacher':'AI教師回饋',
+          'btn-submit-feedback':'送出','btn-close-modal':'取消','ai-drawer-close':'關閉',
+          'export-ilps':'匯出EXCEL','clear-storage':'清除本機資料',
+          'preview-import':'預覽驗證','apply-import':'新增名單',
+          'export-teachers':'匯出教師名單 CSV','export-students':'匯出學生名單 CSV','export-mapping':'匯出師生對應 CSV',
+          'download-template-teachers':'下載教師模板','download-template-students':'下載學生模板','download-template-admins':'下載管理者模板',
+          'add-admin-btn':'新增管理者','toggle-roster-btn':'名單管理','toggle-admins-btn':'管理者帳號',
+          'btn-teachers-choose-file':'匯入檔案','btn-students-choose-file':'匯入檔案','btn-admins-choose-file':'匯入檔案',
+          'apply-admins-import':'新增名單','export-admins':'匯出管理者名單 CSV'
+        };
+        Object.entries(map).forEach(([id, text])=>{
+          const el = root.getElementById ? root.getElementById(id) : null;
+          if (el && (!el.innerText || !el.innerText.trim())) { el.innerText = text; el.setAttribute('aria-label', text); }
+        });
+        root.querySelectorAll('button[data-cta]').forEach(btn=>{
+          if (!btn.innerText || !btn.innerText.trim()) {
+            const alt = btn.getAttribute('aria-label') || btn.getAttribute('title') || '按鈕';
+            btn.innerText = alt;
+          }
+        });
+      }
+      function hydrateButtons(scope=document){ ensureButtonLabels(scope); applyFreshStyles(scope); }
+      hydrateButtons(document);
+      new MutationObserver((muts)=>{ for (const m of muts){ if (m.addedNodes?.length){ hydrateButtons(document); break; } } }).observe(document.body, { childList:true, subtree:true });
+
+      // Utils
+      function showError(message) {
+        const box = document.getElementById('error-box');
+        const msg = document.getElementById('error-message');
+        msg.textContent = message || '發生未知的錯誤';
+        box.classList.remove('hidden');
+        box.classList.remove('bg-emerald-50','border-emerald-200','text-emerald-700');
+        box.classList.add('bg-rose-50','border','border-rose-200','text-rose-700');
+        setTimeout(() => box.classList.add('hidden'), 3600);
+      }
+      function showToast(msg) {
+        const box = document.getElementById('error-box');
+        const msgEl = document.getElementById('error-message');
+        box.classList.remove('bg-rose-50','border-rose-200','text-rose-700');
+        box.classList.add('bg-emerald-50','border','border-emerald-200','text-emerald-700');
+        msgEl.textContent = msg || '完成';
+        box.classList.remove('hidden');
+        setTimeout(() => {
+          box.classList.add('hidden');
+          box.classList.remove('bg-emerald-50','border-emerald-200','text-emerald-700');
+          box.classList.add('bg-rose-50','border-rose-200','text-rose-700');
+        }, 2600);
+      }
+
+      // Normalizers
+      function normalizeString(s) {
+        return (s==null?'':String(s))
+          .replace(/\uFEFF/g,'')
+          .replace(/\u3000/g,' ')
+          .replace(/\s+/g,' ')
+          .trim();
+      }
+      function parseCSV(csvText) {
+        const text = (csvText||'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+        const lines = text.split('\n').filter(l => l.length>0);
+        if (!lines.length) return [];
+        const rawHeaders = lines[0].split(',');
+        const headers = rawHeaders.map(h => normalizeString(h));
+        return lines.slice(1).filter(l => normalizeString(l).length>0).map(line => {
+          const values = line.match(/(".*?"|[^",\r\n]+)(?=\s*,|\s*$)/g)?.map(v => v.replace(/^"(.*)"$/,'$1').replace(/""/g,'"')) || [];
+          const obj = {};
+          headers.forEach((header, index) => {
+            obj[header] = normalizeString(values[index] || '');
+          });
+          return obj;
+        });
+      }
+      function toCSV(rows, headers) {
+        const esc = (v) => {
+          const s = v==null ? '' : String(v);
+          return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
+        };
+        const headerLine = headers.join(',');
+        const lines = rows.map(r => headers.map(h => esc(r[h])).join(','));
+        return [headerLine, ...lines].join('\n');
+      }
+      function downloadTextFile(filename, text) {
+        const blob = new Blob([text], {type:'text/csv;charset=utf-8;'});
+        const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click(); URL.revokeObjectURL(a.href);
+      }
+      function normalizePGY(value) {
+        if (!value) return value;
+        const m = String(value).match(/^PGY\s*-?\s*(\d)$/i);
+        if (m) return `PGY-${m[1]}`;
+        return value;
+      }
+      async function readFileAsTextSmart(file) {
+        const buf = await file.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        if (bytes.length >= 2) {
+          if (bytes[0] === 0xFF && bytes[1] === 0xFE) return new TextDecoder('utf-16le').decode(bytes.subarray(2));
+          if (bytes[0] === 0xFE && bytes[1] === 0xFF) return new TextDecoder('utf-16be').decode(bytes.subarray(2));
+        }
+        if (bytes.length >= 3 && bytes[0]===0xEF && bytes[1]===0xBB && bytes[2]===0xBF) return new TextDecoder('utf-8').decode(bytes.subarray(3));
+        const utf8Text = new TextDecoder('utf-8', { fatal:false }).decode(bytes);
+        const badUtf8 = (utf8Text.match(/\uFFFD/g) || []).length;
+        try {
+          const big5Text = new TextDecoder('big5', { fatal:false }).decode(bytes);
+          const badBig5 = (big5Text.match(/\uFFFD/g) || []).length;
+          return badBig5 < badUtf8 ? big5Text : utf8Text;
+        } catch {
+          return utf8Text;
+        }
+      }
+
+      // Storage keys
+      const LS = {
+        ilpForStudent: (name) => `ilp:${name}`,
+        importedTeachersCSV: 'data:teachersCSV',
+        importedStudentsCSV: 'data:studentsCSV',
+        settings: 'app:settings',
+        admins: 'app:admins'
+      };
+
+      // Admins
+      function loadAdmins() { try { return JSON.parse(localStorage.getItem(LS.admins) || '[]') || []; } catch { return []; } }
+      function saveAdmins(list) { localStorage.setItem(LS.admins, JSON.stringify(list || [])); }
+
+      // ILP storage
+      function getIlpsForStudent(studentName) { try { return JSON.parse(localStorage.getItem(LS.ilpForStudent(studentName)) || '[]') || []; } catch { return []; } }
+      function saveIlpsForStudent(studentName, ilps) { localStorage.setItem(LS.ilpForStudent(studentName), JSON.stringify(ilps)); }
+      function loadSettings() { try { return Object.assign(appState.settings, JSON.parse(localStorage.getItem(LS.settings) || '{}')); } catch { return appState.settings; } }
+      function saveSettings(s) { localStorage.setItem(LS.settings, JSON.stringify(s)); }
+
+      // Dataset
+      function loadDataset() {
+        const teachersCSV = localStorage.getItem(LS.importedTeachersCSV) || CSV_TEACHERS_DEFAULT;
+        const studentsCSV = localStorage.getItem(LS.importedStudentsCSV) || CSV_STUDENT_TEACHER_DEFAULT;
+
+        const teacherRows = parseCSV(teachersCSV);
+        const studentRows = parseCSV(studentsCSV);
+
+        const teachersById = {};
+        const teachersByName = {};
+        const teacherList = teacherRows.map(t => ({
+          role: 'teacher', name: t.teacher_name, userId: t.login_id, password: t.initial_password
+        }));
+        teacherList.forEach(t => { teachersById[t.userId] = t; teachersByName[normalizeString(t.name)] = t; });
+
+        const students = studentRows.map((s, idx) => ({
+          role: 'student',
+          id: `S${(idx+1).toString().padStart(4,'0')}`,
+          loginId: s.login_id || '',
+          password: s.initial_password || '',
+          name: s.student_name,
+          classLevel: s.student_class_or_level,
+          teacherName: s.teacher_name
+        }));
+        const studentsByTeacherName = {};
+        const studentsByLoginId = {};
+        students.forEach(s => {
+          const key = normalizeString(s.teacherName);
+          if (!studentsByTeacherName[key]) studentsByTeacherName[key] = [];
+          studentsByTeacherName[key].push(s);
+          if (s.loginId) studentsByLoginId[s.loginId] = s;
+        });
+        const ilpFields = parseCSV(CSV_ILP_FIELDS_DEFAULT);
+
+        return { teachersById, teachersByName, teacherList, students, studentsByTeacherName, studentsByLoginId, ilpFields, teachersCSV, studentsCSV };
+      }
+
+      // Backend stubs
+      function backendEnabled() { return !!(appState?.settings?.googleUrl && appState?.settings?.googleToken); }
+      async function backendFetch(action, payload) {
+        const url = appState.settings.googleUrl;
+        const token = appState.settings.googleToken;
+        const res = await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ token, action, ...payload }) });
+        return res.json();
+      }
+      async function serverListIlps(studentName) {
+        if (!backendEnabled()) return getIlpsForStudent(studentName);
+        try {
+          const out = await backendFetch('list_ilps_by_student', { student_name: studentName });
+          if (out?.ok) {
+            const remote = out.data || [];
+            const local = getIlpsForStudent(studentName);
+            const byId = {};
+            [...local, ...remote].forEach(p=>{
+              const k = p.id;
+              if (!byId[k]) byId[k] = p;
+              else {
+                const a = new Date(byId[k].updatedAt||0).getTime();
+                const b = new Date(p.updatedAt||0).getTime();
+                if (b >= a) byId[k] = p;
+              }
+            });
+            const merged = Object.values(byId);
+            saveIlpsForStudent(studentName, merged);
+            return merged;
+          }
+        } catch(e){ console.warn('serverListIlps failed', e); }
+        return getIlpsForStudent(studentName);
+      }
+      async function serverUpsertIlp(student, ilp) { if (!backendEnabled()) return; try { await backendFetch('upsert_ilp', { student_name: student.name, ilp }); } catch(e){ console.warn('serverUpsertIlp failed', e); } }
+      async function serverUpsertFeedback(student, ilp, feedback) { if (!backendEnabled()) return; try { await backendFetch('upsert_feedback', { student_name: student.name, ilp_id: ilp.id, feedback }); } catch(e){ console.warn('serverUpsertFeedback failed', e); } }
+
+      // AI coach suggestions
+      function generateAiCoachAdvice(ilp, student) {
+        const f = ilp?.fields || {};
+        const pgy = normalizePGY(f.rank || student.classLevel || '');
+        const tips = [];
+
+        if (f.goal && f.assessment) tips.push(`將「${f.goal.slice(0,30)}」對應到2–3個可量化指標，並在每次臨床實作後以 mini-CEX 簡短評分與反思（≤5 分鐘）。`);
+        else if (f.goal) tips.push(`為目標「${f.goal.slice(0,30)}」補上可驗證的評估方式（如 DOPS、口試或病例簡報），並定義合格門檻。`);
+        else tips.push('請先明確寫下本次學習目標，並用 SMART 準則描述。');
+
+        if (f.strategy && f.resources) tips.push('把策略分解成每週兩個固定時段（例如二/四 17:30），並事先向導師預約10分鐘術後回饋。');
+        else if (f.strategy || f.resources) tips.push('補齊策略與資源的對應（誰、在何時提供什麼協助），減少臨時尋找資源造成的延誤。');
+        else tips.push('規劃「文獻→觀摩→模擬→分段實作→反思」的階梯式策略，並列出需要的場地/人力。');
+
+        if (f.challenges) tips.push('針對「可能遭遇的困難」先擬定備案，例如觀摩場次不足時，以模擬訓練與錄影回看補強。');
+        else tips.push('請預先列出2項風險或困難（如排程、案例不足），並寫下對應備案。');
+
+        tips.push(`依 ${pgy||'當前'} 等級，先要求能「口述關鍵風險點」與「示範安全檢查表」，再逐步進到分段實作。`);
+
+        if (f.timeline) tips.push('將總時程切成每週里程碑，並在每週結束前回填達標情況與下一步。');
+        else tips.push('請描述預計時程（例如 4 週），並在每週設定1–2個可驗證的小目標。');
+
+        return tips;
+      }
+
+      function openAiDrawer() { aiDrawer.classList.remove('hidden'); }
+      function closeAiDrawer() { aiDrawer.classList.add('hidden'); }
+
+      // Progress
+      const BASIC_KEYS = new Set(['name','gender','rank','fill_date']);
+      function computeProgress(ilp) {
+        const ms = (ilp?.progress?.milestones) || [];
+        let total = ms.length;
+        let done = ms.filter(m=>m.done).length;
+
+        if (total === 0) {
+          const allQs = DATA?.ilpFields || [];
+          const evalQs = allQs.filter(q => !BASIC_KEYS.has(q.field_key));
+          total = evalQs.length;
+          const f = ilp?.fields || {};
+          done = evalQs.reduce((acc, q)=>{
+            const val = (f[q.field_key]||'').toString().trim();
+            return acc + (val ? 1 : 0);
+          }, 0);
+        }
+
+        const percent = total ? Math.round(done*100/total) : 0;
+        return { total, done, percent };
+      }
+
+      // Helpers
+      function sumFieldMetrics(ilp){ const m = ilp.metrics?.fields || {}; let ai=0, manual=0; Object.values(m).forEach(v=>{ ai+=(v.ai_applied||0); manual+=(v.manual_edits||0); }); return { ai, manual }; }
+      function newEmptyILP(student){
+        const now = new Date().toISOString().slice(0,10);
+        return { id: 'ILP-' + Math.random().toString(36).slice(2,8).toUpperCase(), studentId: student.id, studentName: student.name,
+          createdAt: now, updatedAt: now, status: '草稿', fields: {}, progress: { percent: 0, milestones: [], ratio:{done:0,total:0} },
+          aiCoach: [], teacherFeedback: [], metrics: { fields: {}, reviews: 0, lastReviewedAt: '' } };
+      }
+      function consensusPill(agreed) {
+        return `<span class="text-xs px-2 py-1 rounded-full ${agreed?'bg-emerald-50 text-emerald-700 border border-emerald-200':'bg-gray-100 text-gray-500 border border-gray-200'}">🤝 ${agreed?'已共識':'未共識'}</span>`;
+      }
+      function countPlans(studentName) { return (getIlpsForStudent(studentName) || []).length; }
+      function latestIlpOf(studentName) { const ilps = getIlpsForStudent(studentName); return ilps.length ? ilps[ilps.length-1] : null; }
+      function latestUpdatedAt(studentName) {
+        const ilps = getIlpsForStudent(studentName);
+        if (!ilps.length) return '-';
+        let latest = 0; ilps.forEach(p => { const t = new Date(p.updatedAt||p.createdAt||0).getTime(); if (t>latest) latest=t; });
+        return latest ? new Date(latest).toISOString().slice(0,10) : '-';
+      }
+
+      // Router
+      function navigateTo(view) {
+        appState.currentView = view;
+        appContent.innerHTML = '';
+        updateNav();
+        switch (view) {
+          case 'student-dashboard': renderStudentDashboard(); break;
+          case 'student-form':      renderStudentForm();      break;
+          case 'teacher-dashboard': renderTeacherDashboard(); break;
+          case 'admin-dashboard':   renderAdminDashboard();   break;
+        }
+      }
+      function makeNavLink(label, view) {
+        const a = document.createElement('button');
+        const active = appState.currentView === view;
+        a.className = [
+          'px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+          active ? 'bg-primary-100 text-primary-800' : 'bg-white border border-slate-200 text-gray-700 hover:bg-primary-50 hover:border-primary-200'
+        ].join(' ');
+        a.textContent = label;
+        a.setAttribute('aria-label', label);
+        a.onclick = () => navigateTo(view);
+        return a;
+      }
+      function updateNav() {
+        mainNav.innerHTML = '';
+        if (!appState.currentUser) { welcomeText.classList.add('hidden'); logoutBtn.classList.add('hidden'); return; }
+        welcomeText.textContent = `歡迎，${appState.currentUser.name}`;
+        welcomeText.classList.remove('hidden'); logoutBtn.classList.remove('hidden');
+        const role = appState.currentUser.role;
+        if (role === 'student') mainNav.appendChild(makeNavLink('我的計畫', 'student-dashboard'));
+        else if (role === 'teacher') mainNav.appendChild(makeNavLink('學生管理', 'teacher-dashboard'));
+        else if (role === 'admin') mainNav.appendChild(makeNavLink('系統總覽', 'admin-dashboard'));
+      }
+
+      // Student dashboard
+      function renderStudentDashboard() {
+        const user = appState.currentUser;
+        const ilps = getIlpsForStudent(user.name);
+
+        const agg = ilps.reduce((acc, p)=>{
+          const c = computeProgress(p);
+          acc.done += c.done; acc.total += c.total;
+          return acc;
+        }, {done:0,total:0});
+        const avgPercent = agg.total ? Math.round(agg.done*100/agg.total) : 0;
+        const plans = countPlans(user.name);
+        const aiCoachCount = ilps.reduce((a,b)=>a+(b.aiCoach?.length||0),0);
+
+        const header = `
+          <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-6">
+            <div>
+              <h2 class="text-2xl font-bold">學習總覽</h2>
+              <p class="text-gray-500">學生：${user.name}（${user.classLevel}） | 導師：${user.teacherName}</p>
+            </div>
+            <button id="add-new-plan-btn" data-cta="card" class="font-semibold px-4 py-2" aria-label="新增計畫">新增計畫</button>
+          </div>
+        `;
+        const stats = `
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div class="bg-white border border-slate-200 rounded-xl p-5 flex items-center gap-4">
+              <div class="h-10 w-10 rounded-lg grid place-items-center bg-primary-50 text-primary-700" aria-hidden="true">📘</div>
+              <div><p class="text-gray-500 text-sm">學習計畫</p><p class="text-2xl font-bold">${plans}</p></div>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-xl p-5 flex items-center gap-4">
+              <div class="h-10 w-10 rounded-lg grid place-items-center bg-emerald-50 text-emerald-700" aria-hidden="true">📈</div>
+              <div><p class="text-gray-500 text-sm">平均完成度</p><p class="text-2xl font-bold">${avgPercent}%</p></div>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-xl p-5 flex items-center gap-4">
+              <div class="h-10 w-10 rounded-lg grid place-items-center bg-amber-50 text-amber-700" aria-hidden="true">🤖</div>
+              <div><p class="text-gray-500 text-sm">AI 導師建議數</p><p class="text-2xl font-bold">${aiCoachCount}</p></div>
+            </div>
+          </div>
+        `;
+        const list = `
+          <div class="bg-white border border-slate-200 rounded-xl">
+            <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+              <h3 class="text-lg font-semibold">我的學習計畫</h3>
+            </div>
+            <ul id="ilp-list" class="divide-y divide-slate-200">
+              ${ilps.length === 0 ? `<li class="px-5 py-6 text-gray-500">尚未建立任何計畫，點擊「新增計畫」開始填寫。</li>` :
+                ilps.map((ilp, idx) => {
+                  const c = computeProgress(ilp);
+                  return `
+                <li class="px-5 py-4">
+                  <div class="flex items-center justify-between gap-4">
+                    <div class="min-w-0">
+                      <p class="font-medium truncate">${ilp.fields?.goal?.slice(0, 40) || '未填寫目標'}</p>
+                      <p class="text-xs text-gray-500 mt-0.5">建立：${ilp.createdAt || '-'}　更新：${ilp.updatedAt || '-'}</p>
+                      <p class="text-xs text-gray-500 mt-0.5">AI 導師建議：${(ilp.aiCoach?.length||0)} 則　教師回饋：${(ilp.teacherFeedback?.length||0)} 則</p>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                      <span class="text-xs px-2 py-1 rounded bg-accent-50 text-accent-700 border border-accent-200">${ilp.status || '草稿'}</span>
+                      <span class="text-xs px-2 py-1 rounded bg-emerald-50 text-emerald-700">${c.total}/${c.done}（${c.percent}%）</span>
+                      <button class="btn-view-plan text-xs" data-cta="outline" data-idx="${idx}" aria-label="查看計畫">查看</button>
+                    </div>
+                  </div>
+                </li>`;
+                }).join('')}
+            </ul>
+          </div>
+        `;
+        appContent.innerHTML = header + stats + list;
+        hydrateButtons(appContent);
+        document.getElementById('add-new-plan-btn').addEventListener('click', () => navigateTo('student-form'));
+        appContent.querySelectorAll('.btn-view-plan').forEach(btn=>{
+          btn.addEventListener('click', ()=>{
+            const idx = Number(btn.getAttribute('data-idx'));
+            const ilps2 = getIlpsForStudent(user.name);
+            const ilp = ilps2[idx];
+            openReviewModalForView(user, ilp);
+          });
+        });
+      }
+
+      // Student form
+      function renderStudentForm() {
+        const student = appState.currentUser;
+        const fields = DATA.ilpFields;
+        if (!appState.currentILP) appState.currentILP = newEmptyILP(student);
+
+        appContent.innerHTML = `
+          <div class="max-w-5xl mx-auto">
+            <div class="flex items-center justify-between mb-6">
+              <div>
+                <h2 class="text-2xl font-bold">建立/編輯學習計畫</h2>
+                <p class="text-gray-500">學生：${student.name}（${student.classLevel}）｜導師：${student.teacherName}</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button id="back-to-dashboard-btn" class="rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2" aria-label="返回">返回</button>
+              </div>
+            </div>
+
+            <form id="ilp-form" class="bg-white border border-slate-200 rounded-xl p-6 space-y-6" novalidate>
+              <div class="rounded-lg bg-gradient-to-r from-primary-50 to-accent-50 text-primary-800 px-4 py-3 text-sm border border-primary-100">
+                📌 小提醒：完成必填欄位後提交，AI 導師會根據你填寫的內容，自動給出學習建議。
+              </div>
+            </form>
+          </div>
+        `;
+        const ilpForm = document.getElementById('ilp-form');
+        const basicInfoContainer = document.createElement('div');
+        basicInfoContainer.className = 'grid grid-cols-1 md:grid-cols-2 gap-6';
+
+        function fieldWrapper(q) {
+          const wrapper = document.createElement('div');
+          const row = document.createElement('div');
+          row.className = 'mb-2';
+          const left = document.createElement('div'); left.textContent = q.label || q.field_key; left.className='text-sm font-medium text-gray-700';
+          row.appendChild(left);
+          wrapper.appendChild(row);
+
+          let inputEl;
+          if (q.type === 'select') {
+            inputEl = document.createElement('select');
+            inputEl.className = 'w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-400';
+            (q.options || '').split(';').map(s => s.trim()).filter(Boolean).forEach(opt => {
+              const option = document.createElement('option'); option.value = opt; option.textContent = opt; inputEl.appendChild(option);
+            });
+          } else if (q.type === 'textarea') {
+            inputEl = document.createElement('textarea');
+            inputEl.className = 'w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-800 min-h-[120px] resize-y focus:outline-none focus:ring-2 focus:ring-primary-400';
+          } else if (q.type === 'date') {
+            inputEl = document.createElement('input'); inputEl.type = 'date';
+            inputEl.className = 'w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-400';
+            if (!appState.currentILP.fields[q.field_key]) inputEl.valueAsDate = new Date();
+          } else {
+            inputEl = document.createElement('input'); inputEl.type = 'text';
+            inputEl.className = 'w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-400';
+          }
+          inputEl.id = q.field_key; inputEl.name = q.field_key;
+          if ((String(q.required || '').toUpperCase()) === 'TRUE') inputEl.required = true;
+
+          if (q.field_key === 'name') inputEl.value = student.name || '';
+          if (q.field_key === 'rank') {
+            const norm = normalizePGY(student.classLevel);
+            if (q.type === 'select' && norm) {
+              const opts = Array.from(inputEl.options).map(o => o.value);
+              const idx = opts.indexOf(norm); if (idx >= 0) inputEl.selectedIndex = idx;
+            }
+          }
+          if (appState.currentILP.fields[q.field_key]) inputEl.value = appState.currentILP.fields[q.field_key];
+
+          inputEl.addEventListener('input', () => {
+            appState.currentILP.fields[q.field_key] = inputEl.value;
+            appState.currentILP.metrics.fields[q.field_key] = appState.currentILP.metrics.fields[q.field_key] || { ai_applied:0, manual_edits:0 };
+            appState.currentILP.metrics.fields[q.field_key].manual_edits++;
+            touchILP();
+          });
+
+          wrapper.appendChild(inputEl);
+          return wrapper;
+        }
+
+        fields.forEach(q => {
+          const w = fieldWrapper(q);
+          if (['name', 'gender', 'rank', 'fill_date'].includes(q.field_key)) basicInfoContainer.appendChild(w);
+          else ilpForm.appendChild(w);
+        });
+        ilpForm.prepend(basicInfoContainer);
+
+        const buttons = document.createElement('div');
+        buttons.className = 'flex justify-end gap-3 pt-4 border-t border-slate-200';
+        buttons.innerHTML = `
+          <button type="button" id="cancel-form-btn" class="rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2" aria-label="取消">取消</button>
+          <button type="submit" id="submit-ilp-btn" data-cta="primary" class="rounded-lg font-semibold px-5 py-2.5" aria-label="送出">送出</button>
+        `;
+        ilpForm.appendChild(buttons);
+
+        document.getElementById('back-to-dashboard-btn').addEventListener('click', () => { appState.currentILP=null; closeAiDrawer(); navigateTo('student-dashboard'); });
+        document.getElementById('cancel-form-btn').addEventListener('click', () => { appState.currentILP=null; closeAiDrawer(); navigateTo('student-dashboard'); });
+
+        ilpForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+
+          const record = {}; DATA.ilpFields.forEach(q=>{ const el=document.getElementById(q.field_key); record[q.field_key]=el?(el.value||''):''; });
+
+          appState.currentILP.fields = record;
+          appState.currentILP.status = '提交';
+
+          const aiItems = generateAiCoachAdvice(appState.currentILP, student);
+          appState.currentILP.aiCoach = appState.currentILP.aiCoach || [];
+          appState.currentILP.aiCoach.push({ createdAt: new Date().toISOString(), items: aiItems });
+
+          touchILP();
+
+          const ilps = getIlpsForStudent(student.name);
+          ilps.push(appState.currentILP);
+          saveIlpsForStudent(student.name, ilps);
+
+          await serverUpsertIlp(student, appState.currentILP);
+
+          appState.currentILP = null;
+          closeAiDrawer();
+          navigateTo('student-dashboard');
+        });
+
+        hydrateButtons(appContent);
+
+        function touchILP(){
+          const c = computeProgress(appState.currentILP);
+          appState.currentILP.progress.ratio = { done: c.done, total: c.total };
+          appState.currentILP.progress.percent = c.percent;
+          appState.currentILP.updatedAt = new Date().toISOString().slice(0,10);
+        }
+      }
+
+      // Teacher dashboard
+      async function renderTeacherDashboard() {
+        const teacher = appState.currentUser;
+        const students = DATA.studentsByTeacherName[normalizeString(teacher.name)] || [];
+
+        if (backendEnabled() && students.length) {
+          try { await Promise.all(students.map(s => serverListIlps(s.name))); } catch(e){ console.warn('prefetch failed', e); }
+        }
+
+        let totalIlps = 0, aggDone=0, aggTotal=0, pending=0;
+        const staleDays = 14; const today = new Date();
+
+        const studentRows = students.map(s => {
+          const ilps = getIlpsForStudent(s.name);
+          const plans = ilps.length;
+          totalIlps += plans;
+
+          ilps.forEach(p => {
+            const c = computeProgress(p);
+            aggDone += c.done; aggTotal += c.total;
+            if ((p.status||'')!=='已審閱') pending++;
+          });
+
+          const latest = ilps[ilps.length-1];
+          const reviewed = latest ? (latest.status === '已審閱') : false;
+
+          const opHtml = plans
+            ? reviewed
+              ? `<button data-stu="${s.name}" class="view-plan inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-slate-200 bg-white text-primary-900 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-primary-300 text-xs font-medium" aria-label="查看">查看</button>`
+              : `<button data-stu="${s.name}" class="give-feedback inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-primary-200 bg-primary-50 text-primary-900 hover:bg-primary-100 hover:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-300 text-xs font-medium" aria-label="給予回饋">給予回饋</button>`
+            : `<span class="text-xs font-medium text-primary-900">無</span>`;
+
+          return `
+            <tr class="hover:bg-primary-50/50">
+              <td class="py-3 px-4">${s.name}</td>
+              <td class="py-3 px-4">${s.classLevel}</td>
+              <td class="py-3 px-4">
+                <button data-stu="${s.name}" class="btn-view-plans-count inline-flex items-center px-2 py-0.5 rounded-full text-xs border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100" title="查看此學生的所有計畫">
+                  ${plans}
+                </button>
+              </td>
+              <td class="py-3 px-4">${opHtml}</td>
+            </tr>
+          `;
+        }).join('');
+        const avgPercent = aggTotal ? Math.round(aggDone*100/aggTotal) : 0;
+
+        const staleCount = students.reduce((acc, s)=>{
+          const ilps = getIlpsForStudent(s.name);
+          return acc + ilps.filter(x=>{
+            const d = x.updatedAt ? Math.floor((today - new Date(x.updatedAt))/86400000) : 999;
+            return d >= staleDays;
+          }).length;
+        }, 0);
+
+        appContent.innerHTML = `
+          <div class="flex items-end justify-between mb-6">
+            <div>
+              <h2 class="text-2xl font-bold">教師儀表板</h2>
+              <p class="text-gray-500">教師：${teacher.name}（帳號：${teacher.userId}）</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+            <div class="bg-white border border-slate-200 rounded-xl p-5"><p class="text-sm text-gray-500">學生總數</p><p class="text-3xl font-bold text-primary-700 mt-2">${students.length}</p></div>
+            <div class="bg-white border border-slate-200 rounded-xl p-5"><p class="text-sm text-gray-500">學生計畫數</p><p class="text-3xl font-bold text-amber-600 mt-2">${totalIlps}</p></div>
+            <div class="bg-white border border-slate-200 rounded-xl p-5"><p class="text-sm text-gray-500">平均完成度</p><p class="text-3xl font-bold text-emerald-600 mt-2">${avgPercent}%</p></div>
+            <div class="bg-white border border-slate-200 rounded-xl p-5"><p class="text-sm text-gray-500">待審核</p><p class="text-3xl font-bold text-rose-600 mt-2">${pending}</p></div>
+            <div class="bg-white border border-slate-200 rounded-xl p-5"><p class="text-sm text-gray-500">卡關（≥14天）</p><p class="text-3xl font-bold mt-2">${staleCount}</p></div>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-xl">
+            <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+              <h3 class="text-lg font-semibold">學生列表</h3>
+              <div class="text-sm text-gray-500">卡關（${staleCount} 筆：≥14天未更新）</div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left">
+                <thead>
+                  <tr class="border-b border-slate-200 text-gray-500 text-sm">
+                    <th class="py-3 px-4 font-medium">學生姓名</th>
+                    <th class="py-3 px-4 font-medium">職級/班級</th>
+                    <th class="py-3 px-4 font-medium">計畫數</th>
+                    <th class="py-3 px-4 font-medium">操作</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200">
+                  ${studentRows}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+        hydrateButtons(appContent);
+
+        // Click handlers
+        appContent.querySelectorAll('.give-feedback').forEach(btn=>{
+          btn.addEventListener('click', ()=>{
+            const stuName = btn.getAttribute('data-stu');
+            const list = getIlpsForStudent(stuName);
+            if (!list.length) return;
+            const latest = list[list.length-1];
+            const student = DATA.students.find(x=>x.name===stuName) || { name: stuName, classLevel:'', teacherName: teacher.name };
+            openReviewModalForTeacher(student, latest);
+          });
+        });
+        appContent.querySelectorAll('.view-plan').forEach(btn=>{
+          btn.addEventListener('click', ()=>{
+            const stuName = btn.getAttribute('data-stu');
+            const list = getIlpsForStudent(stuName);
+            if (!list.length) return;
+            const latest = list[list.length-1];
+            const student = DATA.students.find(x=>x.name===stuName) || { name: stuName, classLevel:'', teacherName: teacher.name };
+            openReviewModalForView(student, latest);
+          });
+        });
+        // New: click plan count to view all plans of that student
+        appContent.querySelectorAll('.btn-view-plans-count').forEach(btn=>{
+          btn.addEventListener('click', ()=>{
+            const stuName = btn.getAttribute('data-stu');
+            openTeacherPlansModal(stuName);
+          });
+        });
+      }
+
+      // Admin analytics + roster management (unchanged features preserved)
+      function getLastNDates(n) { const arr=[]; for (let i=n-1;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); arr.push(d.toISOString().slice(0,10)); } return arr; }
+      function collectAnalytics() {
+        const aiByDay = {}; const fbByDay = {};
+        const days = getLastNDates(7); days.forEach(d=>{ aiByDay[d]=0; fbByDay[d]=0; });
+
+        let totalPlans=0, manualEdits=0, totalReviews=0;
+        const completionBuckets = { '0-20':0,'20-40':0,'40-60':0,'60-80':0,'80-100':0 };
+
+        DATA.students.forEach(s=>{
+          const ilps = getIlpsForStudent(s.name);
+          totalPlans += ilps.length;
+          ilps.forEach(p=>{
+            (p.aiCoach||[]).forEach(ac=>{
+              const d = (ac.createdAt||'').slice(0,10);
+              if (aiByDay[d]!=null) aiByDay[d] += 1;
+            });
+            (p.teacherFeedback||[]).forEach(fb=>{
+              const d = (fb.createdAt||'').slice(0,10);
+              if (fbByDay[d]!=null) fbByDay[d] += 1;
+              totalReviews += fb.submitted ? 1 : 0;
+            });
+            const m = sumFieldMetrics(p); manualEdits += m.manual;
+            const perc = computeProgress(p).percent;
+            if (perc<20) completionBuckets['0-20']++; else if (perc<40) completionBuckets['20-40']++; else if (perc<60) completionBuckets['40-60']++; else if (perc<80) completionBuckets['60-80']++; else completionBuckets['80-100']++;
+          });
+        });
+        return { days, aiByDay, fbByDay, completionBuckets, totalPlans, manualEdits, totalReviews };
+      }
+      function computeSupportReasonsForStudent(s) {
+        const today = new Date();
+        const p = latestIlpOf(s.name);
+        if (!p) return [];
+        const c = computeProgress(p);
+        const upd = p.updatedAt ? new Date(p.updatedAt) : null;
+        const days = upd ? Math.floor((today - upd)/86400000) : 999;
+        const reasons = [];
+        if (days >= 14) reasons.push('≥14天未更新');
+        if (c.percent < 40) reasons.push('完成度 < 40%');
+        if (!p.fields?.goal) reasons.push('未填「學習目標」');
+        if (!p.fields?.assessment) reasons.push('未填「評估指標」');
+        if ((p.status||'')==='草稿' && days>=7) reasons.push('草稿超過 7 天未提交');
+        return reasons;
+      }
+
+      // Roster merge helper
+      function mergeByKey(existingRows, newRows, key) {
+        const map = {};
+        (existingRows||[]).forEach(r=>{ const k=normalizeString(r[key]); if(k) map[k]=r; });
+        (newRows||[]).forEach(r=>{ const k=normalizeString(r[key]); if(k) map[k]=r; });
+        return Object.values(map);
+      }
+
+      function renderAdminDashboard() {
+        const { days, aiByDay, fbByDay, completionBuckets, totalPlans, manualEdits, totalReviews } = collectAnalytics();
+
+        const filterCard = `
+          <div class="bg-white border border-slate-200 rounded-xl p-5 mb-6">
+            <div class="flex items-center justify-between">
+              <h3 class="text-lg font-semibold">學員篩選與查看</h3>
+              <div class="text-sm text-amber-700 flex items-center gap-1"><span aria-hidden="true">🔔</span><span>代表需要支援</span></div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mt-3">
+              <div>
+                <label class="text-sm text-gray-600 block mb-1">導師</label>
+                <select id="filter-teacher" class="w-full rounded-lg border border-gray-300 px-3 py-2">
+                  <option value="">全部導師</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-sm text-gray-600 block mb-1">職級/班級</label>
+                <select id="filter-class" class="w-full rounded-lg border border-gray-300 px-3 py-2">
+                  <option value="">全部</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-sm text-gray-600 block mb-1">狀態</label>
+                <select id="filter-support" class="w-full rounded-lg border border-gray-300 px-3 py-2">
+                  <option value="">全部學員</option>
+                  <option value="needs">僅顯示需要支援</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-sm text-gray-600 block mb-1">搜尋</label>
+                <input id="filter-search" type="text" class="w-full rounded-lg border border-gray-300 px-3 py-2" placeholder="學生姓名 / 人事號">
+              </div>
+            </div>
+
+            <div class="overflow-x-auto mt-4">
+              <table class="min-w-full text-sm border border-slate-200 rounded-lg overflow-hidden">
+                <thead class="bg-slate-50 text-slate-600">
+                  <tr>
+                    <th class="px-3 py-2 text-left">學生姓名</th>
+                    <th class="px-3 py-2 text-left">人事號</th>
+                    <th class="px-3 py-2 text-left">職級</th>
+                    <th class="px-3 py-2 text-left">導師</th>
+                    <th class="px-3 py-2 text-left">計畫數</th>
+                    <th class="px-3 py-2 text-left">最新更新</th>
+                    <th class="px-3 py-2 text-left">提醒</th>
+                    <th class="px-3 py-2 text-left">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="filter-tbody" class="divide-y"></tbody>
+              </table>
+            </div>
+          </div>
+        `;
+
+        const manageToggles = `
+          <div class="bg-white border border-slate-200 rounded-xl p-5 mb-4">
+            <div class="flex items-center justify-between">
+              <h3 class="text-lg font-semibold">管理面板</h3>
+              <p class="text-xs text-gray-500">按下方按鈕展開管理區塊（預設隱藏）</p>
+            </div>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <button id="toggle-roster-btn" data-cta="card" class="px-3 py-2">名單管理</button>
+              <button id="toggle-admins-btn" data-cta="card" class="px-3 py-2">管理者帳號</button>
+            </div>
+          </div>
+        `;
+
+        const rosterCard = `
+          <div id="roster-card" class="bg-white border border-slate-200 rounded-xl p-5 mt-2 hidden">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+              <h3 class="text-lg font-semibold">名單管理（教師 / 學生 / 師生對應 / 管理者）</h3>
+              <div class="flex flex-wrap gap-2 items-center">
+                <label class="text-sm text-gray-600">管理清單</label>
+                <select id="roster-manage-select" class="rounded border border-gray-300 px-2 py-1 text-sm">
+                  <option value="students">學生名單</option>
+                  <option value="teachers">教師名單</option>
+                  <option value="admins">管理者名單</option>
+                  <option value="mapping">師生對應</option>
+                </select>
+                <button id="export-teachers" data-cta="outline" class="px-3 py-2">匯出教師名單 CSV</button>
+                <button id="export-students" data-cta="outline" class="px-3 py-2">匯出學生名單 CSV</button>
+                <button id="export-mapping"  data-cta="outline" class="px-3 py-2">匯出師生對應 CSV</button>
+                <button id="export-admins"  data-cta="outline" class="px-3 py-2">匯出管理者名單 CSV</button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <!-- Teachers -->
+              <section id="section-teachers" class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <h4 class="font-medium">教師名單（CSV 或單筆新增）</h4>
+                  <div class="flex items-center gap-2">
+                    <button id="download-template-teachers" class="text-sm px-3 py-1.5 rounded border border-slate-200 hover:bg-slate-50">下載模板</button>
+                    <button id="btn-teachers-choose-file" data-cta="card" class="text-sm px-3 py-1.5">匯入檔案</button>
+                    <input id="teachers-file" type="file" accept=".csv" class="hidden">
+                  </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  <input id="t-single-name"  type="text" class="rounded-lg border border-gray-300 px-3 py-2" placeholder="教師姓名">
+                  <input id="t-single-login" type="text" class="rounded-lg border border-gray-300 px-3 py-2" placeholder="帳號（login_id）">
+                  <input id="t-single-pass"  type="text" class="rounded-lg border border-gray-300 px-3 py-2" placeholder="密碼">
+                </div>
+                <div class="flex items-center gap-2">
+                  <button id="t-single-add" class="text-sm px-3 py-1.5 rounded border border-slate-200 hover:bg-slate-50">加入名單</button>
+                </div>
+                <textarea id="csv-teachers-input" class="w-full h-40 rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="teacher_name,login_id,initial_password&#10;王小明,T001,secret"></textarea>
+              </section>
+
+              <!-- Students -->
+              <section id="section-students" class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <h4 class="font-medium">學生名單（CSV 或單筆新增）</h4>
+                  <div class="flex items-center gap-2">
+                    <button id="download-template-students" class="text-sm px-3 py-1.5 rounded border border-slate-200 hover:bg-slate-50">下載模板</button>
+                    <button id="btn-students-choose-file" data-cta="card" class="text-sm px-3 py-1.5">匯入檔案</button>
+                    <input id="students-file" type="file" accept=".csv" class="hidden">
+                  </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-2">
+                  <input id="s-single-name"    type="text" class="rounded-lg border border-gray-300 px-3 py-2" placeholder="學生姓名">
+                  <input id="s-single-login"   type="text" class="rounded-lg border border-gray-300 px-3 py-2" placeholder="帳號（login_id）">
+                  <input id="s-single-pass"    type="text" class="rounded-lg border border-gray-300 px-3 py-2" placeholder="密碼">
+                  <input id="s-single-class"   type="text" class="rounded-lg border border-gray-300 px-3 py-2" placeholder="職級/班級（例：PGY1）">
+                  <input id="s-single-teacher" type="text" class="rounded-lg border border-gray-300 px-3 py-2" placeholder="導師姓名">
+                </div>
+                <div class="flex items-center gap-2">
+                  <button id="s-single-add" class="text-sm px-3 py-1.5 rounded border border-slate-200 hover:bg-slate-50">加入名單</button>
+                </div>
+                <textarea id="csv-students-input" class="w-full h-40 rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="student_name,login_id,initial_password,student_class_or_level,teacher_name&#10;張小華,S001,secret,PGY1,王小明"></textarea>
+              </section>
+
+              <!-- Admins -->
+              <section id="section-admins" class="space-y-2 lg:col-span-2">
+                <div class="flex items-center justify-between">
+                  <h4 class="font-medium">管理者名單（CSV 或單筆新增）</h4>
+                  <div class="flex items-center gap-2">
+                    <button id="download-template-admins" class="text-sm px-3 py-1.5 rounded border border-slate-200 hover:bg-slate-50">下載模板</button>
+                    <button id="btn-admins-choose-file" data-cta="card" class="text-sm px-3 py-1.5">匯入檔案</button>
+                    <input id="admins-file" type="file" accept=".csv" class="hidden">
+                  </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  <input id="a-single-name"  type="text" class="rounded-lg border border-gray-300 px-3 py-2" placeholder="名稱（顯示用）">
+                  <input id="a-single-login" type="text" class="rounded-lg border border-gray-300 px-3 py-2" placeholder="帳號（login_id）">
+                  <input id="a-single-pass"  type="text" class="rounded-lg border border-gray-300 px-3 py-2" placeholder="密碼">
+                </div>
+                <div class="flex items-center gap-2">
+                  <button id="a-single-add" class="text-sm px-3 py-1.5 rounded border border-slate-200 hover:bg-slate-50">加入名單</button>
+                </div>
+                <textarea id="csv-admins-input" class="w-full h-32 rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="admin_name,login_id,initial_password&#10;系統管理員,ADMIN01,secret"></textarea>
+
+                <div class="flex items-center gap-2 mt-2">
+                  <button id="preview-admins-import" data-cta="outline" class="px-4 py-2">預覽驗證</button>
+                  <button id="apply-admins-import"   data-cta="card" class="px-4 py-2">新增名單</button>
+                </div>
+                <div id="admins-import-result" class="mt-2 hidden">
+                  <div id="admins-import-summary" class="text-sm text-gray-700 mb-1"></div>
+                  <ul id="admins-import-errors" class="text-sm text-rose-700 list-disc pl-5"></ul>
+                </div>
+              </section>
+            </div>
+
+            <!-- 預覽與新增 -->
+            <div class="flex flex-wrap items-center justify-between gap-2 mt-4">
+              <div class="flex items-center gap-2">
+                <label class="text-sm text-gray-600">預覽篩選</label>
+                <select id="preview-filter-teacher" class="rounded border border-gray-300 px-2 py-1 text-sm">
+                  <option value="">全部導師</option>
+                </select>
+                <input id="preview-search" type="text" placeholder="搜尋學生姓名/人事號" class="rounded border border-gray-300 px-2 py-1 text-sm"/>
+              </div>
+              <div class="flex items-center gap-2">
+                <button id="preview-import" data-cta="outline" class="px-4 py-2">預覽驗證</button>
+                <button id="apply-import"   data-cta="card" class="px-4 py-2">新增名單</button>
+              </div>
+            </div>
+
+            <div id="import-result" class="mt-4 hidden">
+              <div id="import-summary" class="text-sm text-gray-700 mb-2"></div>
+              <ul id="import-errors" class="text-sm text-rose-700 list-disc pl-5"></ul>
+              <div class="overflow-auto mt-3">
+                <table id="preview-table" class="min-w-full text-sm border border-slate-200 rounded-lg overflow-hidden hidden">
+                  <thead class="bg-slate-50 text-slate-600">
+                    <tr>
+                      <th class="px-3 py-2 text-left">學生姓名</th>
+                      <th class="px-3 py-2 text-left">人事號</th>
+                      <th class="px-3 py-2 text-left">職級</th>
+                      <th class="px-3 py-2 text-left">導師</th>
+                      <th class="px-3 py-2 text-left">導師帳號</th>
+                    </tr>
+                  </thead>
+                  <tbody id="preview-tbody" class="divide-y"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        `;
+
+        const adminsCard = `
+          <div id="admins-card" class="bg-white border border-slate-200 rounded-xl p-5 mt-4 hidden">
+            <h3 class="text-lg font-semibold mb-3">管理者帳號（即時管理）</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+              <input id="admin-name" type="text" class="rounded-lg border border-gray-300 px-3 py-2" placeholder="名稱（顯示用，例如：管理者）">
+              <input id="admin-userid" type="text" class="rounded-lg border border-gray-300 px-3 py-2" placeholder="人事號 / 帳號（例如：A00924）">
+              <input id="admin-password" type="text" class="rounded-lg border border-gray-300 px-3 py-2" placeholder="密碼">
+            </div>
+            <div class="flex items-center justify-end">
+              <button id="add-admin-btn" data-cta="outline" class="px-4 py-2">新增管理者</button>
+            </div>
+            <div class="overflow-x-auto mt-4">
+              <table class="min-w-full text-sm border border-slate-200 rounded-lg overflow-hidden">
+                <thead class="bg-slate-50 text-slate-600">
+                  <tr>
+                    <th class="px-3 py-2 text-left">名稱</th>
+                    <th class="px-3 py-2 text-left">帳號</th>
+                    <th class="px-3 py-2 text-left">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="admins-tbody" class="divide-y"></tbody>
+              </table>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">說明：管理者資料僅儲存在本機（localStorage）。預設提供一組 A00924 / A00924。</p>
+          </div>
+        `;
+
+        appContent.innerHTML = `
+          <div class="flex items-end justify-between mb-6">
+            <div>
+              <h2 class="text-2xl font-bold">管理者儀表板</h2>
+              <p class="text-gray-500">管理者：${appState.currentUser.name}（帳號：${appState.currentUser.userId}）</p>
+            </div>
+            <div class="flex gap-2">
+              <button id="export-ilps" data-cta="outline" class="px-4 py-2" aria-label="匯出EXCEL">匯出EXCEL</button>
+              <button id="clear-storage" data-cta="danger" class="px-4 py-2" aria-label="清除本機資料">清除本機資料</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-8">
+            <div class="bg-white border border-slate-200 rounded-xl p-5 md:col-span-2"><p class="text-sm text-gray-500">教師數</p><p class="text-3xl font-bold text-primary-700 mt-2">${DATA.teacherList.length}</p></div>
+            <div class="bg-white border border-slate-200 rounded-xl p-5 md:col-span-2"><p class="text-sm text-gray-500">學生數</p><p class="text-3xl font-bold text-primary-700 mt-2">${DATA.students.length}</p></div>
+            <div class="bg-white border border-slate-200 rounded-xl p-5 md:col-span-1"><p class="text-sm text-gray-500">計畫總數</p><p class="text-3xl font-bold text-amber-600 mt-2">${totalPlans}</p></div>
+            <div class="bg-white border border-slate-200 rounded-xl p-5 md:col-span-1"><p class="text-sm text-gray-500">教師審核次數</p><p class="text-3xl font-bold text-emerald-600 mt-2">${totalReviews}</p></div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            <div class="bg-white border border-slate-200 rounded-xl p-5 lg:col-span-2">
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-lg font-semibold">近 7 日 AI 導師建議與教師回饋</h3>
+                <span class="text-xs text-gray-500">AI 導師建議 vs 教師回饋</span>
+              </div>
+              <canvas id="chart-trend" height="120" aria-label="近七日趨勢圖"></canvas>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-xl p-5">
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-lg font-semibold">完成度分布</h3>
+              </div>
+              <canvas id="chart-completion" height="120" aria-label="完成度分布圖"></canvas>
+            </div>
+          </div>
+
+          ${filterCard}
+          ${manageToggles}
+          ${rosterCard}
+          ${adminsCard}
+        `;
+        hydrateButtons(appContent);
+
+        // Toggle cards
+        document.getElementById('toggle-roster-btn')?.addEventListener('click', ()=>{
+          const el = document.getElementById('roster-card');
+          el.classList.toggle('hidden');
+        });
+        document.getElementById('toggle-admins-btn')?.addEventListener('click', ()=>{
+          const el = document.getElementById('admins-card');
+          el.classList.toggle('hidden');
+        });
+
+        // Admins table
+        function renderAdminsTable() {
+          const tbody = document.getElementById('admins-tbody');
+          const rows = appState.admins.map((a, idx)=>`
+            <tr>
+              <td class="px-3 py-2">${a.name||'-'}</td>
+              <td class="px-3 py-2">${a.userId}</td>
+              <td class="px-3 py-2">
+                <button class="btn-del-admin text-xs px-2 py-1 rounded border border-slate-200 hover:bg-slate-50" data-idx="${idx}">刪除</button>
+              </td>
+            </tr>
+          `).join('');
+          tbody.innerHTML = rows || '<tr><td colspan="3" class="px-3 py-2 text-sm text-gray-500">尚無其他管理者。</td></tr>';
+          tbody.querySelectorAll('.btn-del-admin').forEach(btn=>{
+            btn.addEventListener('click', ()=>{
+              const i = Number(btn.getAttribute('data-idx'));
+              if (appState.admins.length <= 1) { showError('至少需保留一位管理者'); return; }
+              const uid = appState.admins[i].userId;
+              if (!confirm(`確定刪除管理者 ${uid}？`)) return;
+              appState.admins.splice(i,1);
+              saveAdmins(appState.admins);
+              renderAdminsTable();
+              showToast('已刪除管理者');
+            });
+          });
+        }
+        renderAdminsTable();
+        document.getElementById('add-admin-btn')?.addEventListener('click', ()=>{
+          const name = normalizeString(document.getElementById('admin-name').value);
+          const userId = normalizeString(document.getElementById('admin-userid').value);
+          const password = normalizeString(document.getElementById('admin-password').value);
+          if (!name || !userId || !password) { showError('請填入名稱、帳號與密碼'); return; }
+          if (appState.admins.find(a=>a.userId===userId)) { showError('此帳號已存在'); return; }
+          appState.admins.push({ name, userId, password, role:'admin' });
+          saveAdmins(appState.admins);
+          renderAdminsTable();
+          showToast('已新增管理者');
+          document.getElementById('admin-name').value='';
+          document.getElementById('admin-userid').value='';
+          document.getElementById('admin-password').value='';
+        });
+
+        // Charts
+        const ctx1 = document.getElementById('chart-trend');
+        if (ctx1) {
+          const aiData = days.map(d=>aiByDay[d]||0);
+          const fbData = days.map(d=>fbByDay[d]||0);
+          new Chart(ctx1, {
+            type: 'line',
+            data: {
+              labels: days,
+              datasets: [
+                { label:'AI 導師建議', data: aiData, borderColor:'#0ea5e9', backgroundColor:'rgba(14,165,233,.15)', tension:.35, fill:true },
+                { label:'教師回饋', data: fbData, borderColor:'#8b5cf6', backgroundColor:'rgba(139,92,246,.15)', tension:.35, fill:true }
+              ]
+            },
+            options: { responsive:true, scales:{ y:{ beginAtZero:true, ticks:{ precision:0 } } }, plugins:{ legend:{ position:'bottom' } } }
+          });
+        }
+        const ctx2 = document.getElementById('chart-completion');
+        if (ctx2) {
+          const labels = Object.keys(completionBuckets);
+          new Chart(ctx2, {
+            type: 'bar',
+            data: {
+              labels,
+              datasets: [{ label:'計畫數', data: labels.map(k=>completionBuckets[k]), backgroundColor:'#14b8a6' }]
+            },
+            options: { responsive:true, scales:{ y:{ beginAtZero:true, ticks:{ precision:0 } } }, plugins:{ legend:{ display:false } } }
+          });
+        }
+
+        // Filter table
+        const selTeacher = document.getElementById('filter-teacher');
+        const selClass = document.getElementById('filter-class');
+        const selSupport = document.getElementById('filter-support');
+        const inpSearch = document.getElementById('filter-search');
+        const tbody = document.getElementById('filter-tbody');
+
+        const teacherNames = Array.from(new Set(DATA.students.map(s=>normalizeString(s.teacherName)).filter(Boolean))).sort();
+        selTeacher.innerHTML = `<option value="">全部導師</option>` + teacherNames.map(n => `<option>${n}</option>`).join('');
+        const classes = Array.from(new Set(DATA.students.map(s=>normalizeString(s.classLevel)).filter(Boolean))).sort();
+        selClass.innerHTML = `<option value="">全部</option>` + classes.map(n => `<option>${n}</option>`).join('');
+
+        function rebuildStudentTable() {
+          const t = normalizeString(selTeacher.value);
+          const c = normalizeString(selClass.value);
+          const sup = selSupport.value;
+          const kw = inpSearch.value.trim().toLowerCase();
+
+          let list = [...DATA.students];
+          if (t) list = list.filter(s=> normalizeString(s.teacherName)===t);
+          if (c) list = list.filter(s=> normalizeString(s.classLevel)===c);
+          if (kw) list = list.filter(s => (s.name||'').toLowerCase().includes(kw) || (s.loginId||'').toLowerCase().includes(kw));
+
+          const rows = list.map(s=>{
+            const plans = countPlans(s.name);
+            const latest = latestUpdatedAt(s.name) || '-';
+            const reasons = computeSupportReasonsForStudent(s);
+            if (sup==='needs' && reasons.length===0) return '';
+            const bell = reasons.length ? `<span class="text-amber-600" title="${reasons.join('、')}" aria-label="需要支援">🔔</span>` : '';
+            return `
+              <tr class="hover:bg-primary-50/30">
+                <td class="px-3 py-2">${s.name}</td>
+                <td class="px-3 py-2">${s.loginId||''}</td>
+                <td class="px-3 py-2">${s.classLevel||''}</td>
+                <td class="px-3 py-2">${s.teacherName||''}</td>
+                <td class="px-3 py-2">${plans}</td>
+                <td class="px-3 py-2">${latest}</td>
+                <td class="px-3 py-2">${bell}</td>
+                <td class="px-3 py-2">
+                  <button class="btn-view-stu text-xs px-2 py-1 rounded border border-slate-200 hover:bg-slate-50" data-stu="${s.name}">查看內容</button>
+                </td>
+              </tr>
+            `;
+          }).join('');
+          tbody.innerHTML = rows || '<tr><td colspan="8" class="px-3 py-3 text-sm text-gray-500">無符合條件的學員。</td></tr>';
+
+          tbody.querySelectorAll('.btn-view-stu').forEach(btn=>{
+            btn.addEventListener('click', ()=>{
+              const stuName = btn.getAttribute('data-stu');
+              openStudentPlansModal(stuName);
+            });
+          });
+        }
+        [selTeacher, selClass, selSupport].forEach(el => el.addEventListener('change', rebuildStudentTable));
+        inpSearch.addEventListener('input', rebuildStudentTable);
+        rebuildStudentTable();
+
+        // Roster textareas initial fill
+        const taTeachers = document.getElementById('csv-teachers-input');
+        const taStudents = document.getElementById('csv-students-input');
+        const taAdmins   = document.getElementById('csv-admins-input');
+        if (taTeachers) taTeachers.value = DATA.teachersCSV || CSV_TEACHERS_DEFAULT;
+        if (taStudents) taStudents.value = DATA.studentsCSV || CSV_STUDENT_TEACHER_DEFAULT;
+        if (taAdmins)   taAdmins.value   = (loadAdmins().length ? 'admin_name,login_id,initial_password\n' + loadAdmins().map(a=>`${a.name||''},${a.userId||''},${a.password||''}`).join('\n') : CSV_ADMINS_TEMPLATE);
+
+        // File inputs
+        const fileTeachers = document.getElementById('teachers-file');
+        const fileStudents = document.getElementById('students-file');
+        const fileAdmins   = document.getElementById('admins-file');
+        document.getElementById('btn-teachers-choose-file')?.addEventListener('click', ()=> fileTeachers?.click());
+        document.getElementById('btn-students-choose-file')?.addEventListener('click', ()=> fileStudents?.click());
+        document.getElementById('btn-admins-choose-file')?.addEventListener('click', ()=> fileAdmins?.click());
+        async function loadCsvToTextarea(fileInput, textarea, label) {
+          const f = fileInput.files?.[0]; if (!f) return;
+          try {
+            const text = await readFileAsTextSmart(f);
+            textarea.value = text;
+            showToast(`已載入${label}CSV`);
+          } catch (e) {
+            console.error(e);
+            showError(`${label}檔案讀取失敗`);
+          }
+        }
+        if (fileTeachers) fileTeachers.addEventListener('change', ()=> loadCsvToTextarea(fileTeachers, taTeachers, '教師'));
+        if (fileStudents) fileStudents.addEventListener('change', ()=> loadCsvToTextarea(fileStudents, taStudents, '學生'));
+        if (fileAdmins)   fileAdmins.addEventListener('change',   ()=> loadCsvToTextarea(fileAdmins,   taAdmins,   '管理者'));
+
+        // Templates download
+        document.getElementById('download-template-teachers')?.addEventListener('click', ()=> downloadTextFile('teachers_template.csv', CSV_TEACHERS_TEMPLATE));
+        document.getElementById('download-template-students')?.addEventListener('click', ()=> downloadTextFile('students_template.csv', CSV_STUDENTS_TEMPLATE));
+        document.getElementById('download-template-admins')?.addEventListener('click', ()=> downloadTextFile('admins_template.csv', CSV_ADMINS_TEMPLATE));
+
+        // Single adds (temp)
+        document.getElementById('t-single-add')?.addEventListener('click', ()=>{
+          const n = normalizeString(document.getElementById('t-single-name').value);
+          const l = normalizeString(document.getElementById('t-single-login').value);
+          const p = normalizeString(document.getElementById('t-single-pass').value);
+          if (!n || !l || !p) { showError('請完整填寫教師姓名/帳號/密碼'); return; }
+          const existing = parseCSV(taTeachers.value);
+          if (existing.find(r => normalizeString(r.login_id) === l)) { showError('教師帳號已存在於暫存名單'); return; }
+          let base = taTeachers.value.trim();
+          if (!/^teacher_name\s*,\s*login_id\s*,\s*initial_password/i.test(base)) {
+            base = 'teacher_name,login_id,initial_password' + (base ? '\n'+base : '');
+          }
+          taTeachers.value = base + '\n' + `${n},${l},${p}`;
+          document.getElementById('t-single-name').value=''; document.getElementById('t-single-login').value=''; document.getElementById('t-single-pass').value='';
+          showToast('已加入教師名單（暫存）');
+        });
+
+        document.getElementById('s-single-add')?.addEventListener('click', ()=>{
+          const n = normalizeString(document.getElementById('s-single-name').value);
+          const l = normalizeString(document.getElementById('s-single-login').value);
+          const p = normalizeString(document.getElementById('s-single-pass').value);
+          const c = normalizeString(document.getElementById('s-single-class').value);
+          const t = normalizeString(document.getElementById('s-single-teacher').value);
+          if (!n || !l || !p || !t) { showError('請至少填寫學生姓名/帳號/密碼/導師'); return; }
+          const tempTeachers = parseCSV(taTeachers.value).map(r=>normalizeString(r.teacher_name));
+          const systemTeachers = DATA.teacherList.map(x=>normalizeString(x.name));
+          const teacherSet = new Set([...tempTeachers, ...systemTeachers]);
+          if (!teacherSet.has(t)) { showError(`導師「${t}」不存在，請先加入教師名單或修正姓名`); return; }
+          let base = taStudents.value.trim();
+          if (!/^student_name\s*,\s*login_id\s*,\s*initial_password\s*,\s*student_class_or_level\s*,\s*teacher_name/i.test(base)) {
+            base = 'student_name,login_id,initial_password,student_class_or_level,teacher_name' + (base ? '\n'+base : '');
+          }
+          taStudents.value = base + '\n' + `${n},${l},${p},${c},${t}`;
+          document.getElementById('s-single-name').value=''; document.getElementById('s-single-login').value=''; document.getElementById('s-single-pass').value=''; document.getElementById('s-single-class').value=''; document.getElementById('s-single-teacher').value='';
+          showToast('已加入學生名單（暫存）');
+        });
+
+        document.getElementById('a-single-add')?.addEventListener('click', ()=>{
+          const n = normalizeString(document.getElementById('a-single-name').value);
+          const l = normalizeString(document.getElementById('a-single-login').value);
+          const p = normalizeString(document.getElementById('a-single-pass').value);
+          if (!n || !l || !p) { showError('請完整填寫管理者名稱/帳號/密碼'); return; }
+          let base = taAdmins.value.trim();
+          if (!/^admin_name\s*,\s*login_id\s*,\s*initial_password/i.test(base)) {
+            base = 'admin_name,login_id,initial_password' + (base ? '\n'+base : '');
+          }
+          taAdmins.value = base + '\n' + `${n},${l},${p}`;
+          document.getElementById('a-single-name').value=''; document.getElementById('a-single-login').value=''; document.getElementById('a-single-pass').value='';
+          showToast('已加入管理者名單（暫存）');
+        });
+
+        // Export CSVs
+        document.getElementById('export-teachers')?.addEventListener('click', ()=>{
+          const headers = ['teacher_name','login_id','initial_password'];
+          const rows = DATA.teacherList.map(t => ({ teacher_name:t.name, login_id:t.userId, initial_password:t.password||'' }));
+          downloadTextFile('teachers.csv', toCSV(rows, headers));
+        });
+        document.getElementById('export-students')?.addEventListener('click', ()=>{
+          const headers = ['student_name','login_id','initial_password','student_class_or_level','teacher_name'];
+          const rows = DATA.students.map(s => ({
+            student_name:s.name, login_id:s.loginId, initial_password:s.password||'',
+            student_class_or_level:s.classLevel||'', teacher_name:s.teacherName||''
+          }));
+          downloadTextFile('students.csv', toCSV(rows, headers));
+        });
+        document.getElementById('export-mapping')?.addEventListener('click', ()=>{
+          const headers = ['teacher_name','teacher_login_id','student_name','student_login_id','student_class_or_level'];
+          const rows = DATA.students.map(s => ({
+            teacher_name:s.teacherName||'',
+            teacher_login_id: (DATA.teachersByName[normalizeString(s.teacherName)]?.userId)||'',
+            student_name:s.name, student_login_id:s.loginId, student_class_or_level:s.classLevel||''
+          }));
+          downloadTextFile('teacher_student_mapping.csv', toCSV(rows, headers));
+        });
+        document.getElementById('export-admins')?.addEventListener('click', ()=>{
+          const headers = ['admin_name','login_id','initial_password'];
+          const rows = appState.admins.map(a => ({ admin_name:a.name||'', login_id:a.userId||'', initial_password:a.password||'' }));
+          downloadTextFile('admins.csv', toCSV(rows, headers));
+        });
+
+        // Preview import
+        function validateRosterCSVs(teacherCSV, studentCSV, existingTeachersRows=[]) {
+          const errors = []; const warnings = [];
+          const tRows = parseCSV(teacherCSV);
+          const sRows = parseCSV(studentCSV);
+
+          if (tRows.length && !/^teacher_name\s*,\s*login_id/i.test((teacherCSV.split('\n')[0]||'').replace(/\uFEFF/g,''))) {
+            warnings.push('教師名單欄位建議為：teacher_name,login_id,initial_password');
+          }
+          if (sRows.length && !/^student_name\s*,\s*login_id/i.test((studentCSV.split('\n')[0]||'').replace(/\uFEFF/g,''))) {
+            warnings.push('學生名單欄位建議為：student_name,login_id,initial_password,student_class_or_level,teacher_name');
+          }
+
+          const tByLogin = {}; const tNames = new Set(existingTeachersRows.map(r=>normalizeString(r.teacher_name||r.name)));
+          tRows.forEach((r, idx)=>{
+            const rowNum = idx+2;
+            const tn = normalizeString(r.teacher_name);
+            const lid = normalizeString(r.login_id);
+            if (!tn) errors.push(`教師第 ${rowNum} 行：teacher_name 不可空白`);
+            if (!lid) errors.push(`教師第 ${rowNum} 行：login_id 不可空白`);
+            if (lid) { if (tByLogin[lid]) errors.push(`教師 login_id 重複：${lid}`); tByLogin[lid] = 1; }
+            if (tn) tNames.add(tn);
+          });
+
+          const sByLogin = {};
+          sRows.forEach((r, idx)=>{
+            const rowNum = idx+2;
+            const sn = normalizeString(r.student_name);
+            const lid = normalizeString(r.login_id);
+            const tn = normalizeString(r.teacher_name);
+            if (!sn) errors.push(`學生第 ${rowNum} 行：student_name 不可空白`);
+            if (!lid) errors.push(`學生第 ${rowNum} 行：login_id 不可空白`);
+            if (!tn) errors.push(`學生第 ${rowNum} 行：teacher_name 不可空白`);
+            if (tn && !tNames.has(tn)) errors.push(`學生第 ${rowNum} 行：teacher_name「${tn}」不在教師名單中`);
+            if (lid) { if (sByLogin[lid]) errors.push(`學生 login_id 重複：${lid}`); sByLogin[lid] = 1; }
+          });
+
+          return { teacherRows: tRows, studentRows: sRows, errors, warnings };
+        }
+
+        let lastPreview = { teacherRows:[], studentRows:[] };
+        function rebuildPreviewTable() {
+          const resultBox = document.getElementById('import-result');
+          const table = document.getElementById('preview-table');
+          const tbodyPrev = document.getElementById('preview-tbody');
+          const filter = normalizeString(document.getElementById('preview-filter-teacher').value);
+          const kw = normalizeString(document.getElementById('preview-search').value).toLowerCase();
+          const tByName = {}; lastPreview.teacherRows.forEach(t => { tByName[normalizeString(t.teacher_name)] = t; });
+
+          let list = lastPreview.studentRows;
+          if (filter) list = list.filter(r => normalizeString(r.teacher_name) === filter);
+          if (kw) {
+            list = list.filter(r => normalizeString(r.student_name).toLowerCase().includes(kw) || normalizeString(r.login_id).toLowerCase().includes(kw));
+          }
+
+          const prev = list.slice(0, 200).map(r => ({
+            student_name: r.student_name, login_id: r.login_id,
+            class: r.student_class_or_level, teacher: r.teacher_name,
+            teacher_login: (tByName[normalizeString(r.teacher_name)]?.login_id)||''
+          }));
+          if (prev.length) {
+            resultBox.classList.remove('hidden');
+            table.classList.remove('hidden');
+            tbodyPrev.innerHTML = prev.map(p=>`
+              <tr>
+                <td class="px-3 py-2">${p.student_name||''}</td>
+                <td class="px-3 py-2">${p.login_id||''}</td>
+                <td class="px-3 py-2">${p.class||''}</td>
+                <td class="px-3 py-2">${p.teacher||''}</td>
+                <td class="px-3 py-2">${p.teacher_login||''}</td>
+              </tr>
+            `).join('');
+          } else {
+            table.classList.add('hidden'); tbodyPrev.innerHTML = '';
+          }
+        }
+
+        document.getElementById('preview-import')?.addEventListener('click', ()=>{
+          const teacherCSV = (taTeachers.value||'').trim();
+          const studentCSV = (taStudents.value||'').trim();
+          const resultBox = document.getElementById('import-result');
+          const summaryEl = document.getElementById('import-summary');
+          const errorsEl = document.getElementById('import-errors');
+
+          const existingTeacherRows = parseCSV(localStorage.getItem(LS.importedTeachersCSV)||'');
+          const parsed = validateRosterCSVs(teacherCSV, studentCSV, existingTeacherRows);
+          lastPreview = { teacherRows: parsed.teacherRows, studentRows: parsed.studentRows };
+
+          resultBox.classList.remove('hidden');
+          errorsEl.innerHTML = '';
+          parsed.errors.forEach(e => {
+            const li = document.createElement('li'); li.textContent = e; errorsEl.appendChild(li);
+          });
+          const warnText = parsed.warnings.length ? `；注意：${parsed.warnings.length} 則` : '';
+          summaryEl.textContent = `教師 ${parsed.teacherRows.length} 位、學生 ${parsed.studentRows.length} 位。錯誤 ${parsed.errors.length} 則${warnText}`;
+
+          const sel = document.getElementById('preview-filter-teacher');
+          const names = Array.from(new Set(parsed.teacherRows.map(t=>normalizeString(t.teacher_name)).filter(Boolean))).sort();
+          sel.innerHTML = `<option value="">全部導師</option>` + names.map(n=>`<option>${n}</option>`).join('');
+
+          rebuildPreviewTable();
+        });
+        document.getElementById('preview-filter-teacher')?.addEventListener('change', rebuildPreviewTable);
+        document.getElementById('preview-search')?.addEventListener('input', rebuildPreviewTable);
+
+        // Apply (merge) roster
+        document.getElementById('apply-import')?.addEventListener('click', ()=>{
+          const teacherCSV = (taTeachers.value||'').trim();
+          const studentCSV = (taStudents.value||'').trim();
+
+          const existingTeachersRows = parseCSV(localStorage.getItem(LS.importedTeachersCSV)||'');
+          const existingStudentsRows = parseCSV(localStorage.getItem(LS.importedStudentsCSV)||'');
+
+          const { teacherRows, studentRows, errors } = validateRosterCSVs(teacherCSV, studentCSV, existingTeachersRows);
+          if (errors.length) { showError('新增名單失敗：請先修正錯誤，再重新預覽/新增。'); return; }
+
+          const mergedTeachers = mergeByKey(existingTeachersRows, teacherRows, 'login_id');
+          const teachersCSVOut = toCSV(mergedTeachers, ['teacher_name','login_id','initial_password']);
+          localStorage.setItem(LS.importedTeachersCSV, teachersCSVOut || CSV_TEACHERS_TEMPLATE);
+
+          const mergedStudents = mergeByKey(existingStudentsRows, studentRows, 'login_id');
+          const studentsCSVOut = toCSV(mergedStudents, ['student_name','login_id','initial_password','student_class_or_level','teacher_name']);
+          localStorage.setItem(LS.importedStudentsCSV, studentsCSVOut || CSV_STUDENTS_TEMPLATE);
+
+          DATA = loadDataset();
+          showToast('名單已新增至系統');
+          renderAdminDashboard();
+        });
+
+        // Admins import apply
+        function parseAdminsCSV(text) {
+          const rows = parseCSV(text);
+          const list = rows.map(r => ({
+            name: r.admin_name || r.name || '',
+            userId: r.login_id || r.userid || r.userId || '',
+            password: r.initial_password || r.password || ''
+          }));
+          return list;
+        }
+        function validateAdminsCSV(text, existing=[]) {
+          const errors = [];
+          const list = parseAdminsCSV(text);
+          const byId = {};
+          [...existing].forEach(a=>{ if (a.userId) byId[a.userId]=1; });
+          list.forEach((a, idx)=>{
+            const row = idx+2;
+            if (!a.name) errors.push(`管理者第 ${row} 行：admin_name 不可空白`);
+            if (!a.userId) errors.push(`管理者第 ${row} 行：login_id 不可空白`);
+            if (!a.password) errors.push(`管理者第 ${row} 行：initial_password 不可空白`);
+            if (a.userId) {
+              if (byId[a.userId]) errors.push(`管理者 login_id 重複：${a.userId}`); 
+              byId[a.userId] = 1;
+            }
+          });
+          return { list, errors };
+        }
+        document.getElementById('preview-admins-import')?.addEventListener('click', ()=>{
+          const text = (taAdmins.value||'').trim();
+          const box = document.getElementById('admins-import-result');
+          const sum = document.getElementById('admins-import-summary');
+          const ul = document.getElementById('admins-import-errors');
+          const { list, errors } = validateAdminsCSV(text, appState.admins);
+          box.classList.remove('hidden');
+          sum.textContent = `管理者 ${list.length} 位。錯誤 ${errors.length} 則`;
+          ul.innerHTML = errors.map(e=>`<li>${e}</li>`).join('');
+        });
+        document.getElementById('apply-admins-import')?.addEventListener('click', ()=>{
+          const text = (taAdmins.value||'').trim();
+          const { list, errors } = validateAdminsCSV(text, appState.admins);
+          if (errors.length) { showError('新增名單失敗：請先修正錯誤，再重新預覽/新增。'); return; }
+          const map = {};
+          (appState.admins||[]).forEach(a=>{ if (a.userId) map[a.userId]=a; });
+          list.forEach(a=>{ if (a.userId) map[a.userId] = { ...a, role:'admin' }; });
+          appState.admins = Object.values(map);
+          saveAdmins(appState.admins);
+          showToast('管理者名單已新增至系統');
+          renderAdminDashboard();
+        });
+
+        // Export ILPs Excel
+        appContent.querySelector('#export-ilps').addEventListener('click', ()=>{
+          const rows = []; 
+          const headers = ['student_name','teacher_name','ilp_id','createdAt','updatedAt','status','progress_percent','progress_ratio','goal','motivation','strategy','resources','challenges','assessment','timeline','ai_coach_count','manual_edits','reviews','teacher_feedback_count'];
+          DATA.students.forEach(s=>{
+            getIlpsForStudent(s.name).forEach(p=>{
+              const m = sumFieldMetrics(p);
+              const c = computeProgress(p);
+              rows.push({
+                student_name: s.name, teacher_name: s.teacherName, ilp_id: p.id, createdAt: p.createdAt || '', updatedAt: p.updatedAt || '', status: p.status || '',
+                progress_percent: c.percent, progress_ratio: `${c.done}/${c.total}`,
+                goal: p.fields?.goal || '', motivation: p.fields?.motivation || '', strategy: p.fields?.strategy || '',
+                resources: p.fields?.resources || '', challenges: p.fields?.challenges || '',
+                assessment: p.fields?.assessment || '', timeline: p.fields?.timeline || '',
+                ai_coach_count: (p.aiCoach?.length||0), manual_edits: m.manual, reviews: p.metrics?.reviews || 0,
+                teacher_feedback_count: (p.teacherFeedback?.length||0)
+              });
+            });
+          });
+          const wb = XLSX.utils.book_new();
+          const ws = XLSX.utils.json_to_sheet(rows, { header: headers });
+          XLSX.utils.book_append_sheet(wb, ws, 'ILPs');
+          const filename = `ilps_export_${new Date().toISOString().slice(0,10)}.xlsx`;
+          XLSX.writeFile(wb, filename);
+        });
+
+        // Clear local
+        appContent.querySelector('#clear-storage').addEventListener('click', ()=>{
+          if (!confirm('確定清除本機資料？將移除匯入名單與所有本地計畫。')) return;
+          Object.keys(localStorage).forEach(k=>{
+            if (k.startsWith('ilp:') || k===LS.importedTeachersCSV || k===LS.importedStudentsCSV) localStorage.removeItem(k);
+          });
+          DATA = loadDataset();
+          showToast('已清除並回到預設名單');
+          renderAdminDashboard();
+        });
+      }
+
+      // Modal helpers
+      function openModal(){ reviewModal.classList.add('active','flex'); }
+      function closeReviewModal(){ reviewModal.classList.remove('active','flex'); reviewModalBody.innerHTML=''; }
+
+      function renderPlanDetails(ilp, student, readonly=false) {
+        const fieldsHtml = DATA.ilpFields.map(q => `
+          <div class="grid grid-cols-12 gap-3 py-2">
+            <div class="col-span-4 text-sm text-gray-500">${q.label}</div>
+            <div class="col-span-8 text-sm text-gray-800 whitespace-pre-wrap">${ilp.fields?.[q.field_key] || ''}</div>
+          </div>
+        `).join('');
+
+        const aiCoachList = (ilp.aiCoach||[]).length
+          ? ilp.aiCoach.map(ac=>`
+              <li class="border border-slate-200 rounded-lg p-3 bg-white">
+                <div class="text-xs text-gray-500 mb-1">${new Date(ac.createdAt||Date.now()).toLocaleString()}</div>
+                <ul class="list-disc pl-5 text-sm space-y-1">${(ac.items||[]).map(x=>`<li>${x}</li>`).join('')}</ul>
+              </li>`).join('')
+          : '<li class="text-sm text-gray-500">尚無 AI 導師建議</li>';
+
+        const teacherFbList = (ilp.teacherFeedback||[]).length
+          ? ilp.teacherFeedback.map(fb=>`
+              <li class="border border-slate-200 rounded-lg p-3 bg-white">
+                <div class="flex items-center justify-between">
+                  <div class="text-xs text-gray-500 mb-1">${fb.createdAt||''}　回饋者：${fb.reviewer||''}</div>
+                  ${consensusPill(!!fb.agreed)}
+                </div>
+                <div class="text-sm whitespace-pre-wrap"><b>整體回饋：</b>${fb.overall||''}</div>
+                ${fb.next? `<div class="text-sm whitespace-pre-wrap mt-1"><b>建議下一步：</b>${fb.next}</div>`:''}
+              </li>`).join('')
+          : '<li class="text-sm text-gray-500">尚無教師回饋</li>';
+
+        const c = computeProgress(ilp);
+
+        const editor = readonly ? '' : `
+          <div class="grid grid-cols-1 gap-3">
+            <div class="flex items-center justify-between">
+              <label class="text-sm font-medium text-gray-700">本次回饋</label>
+              <button id="fb-agree-toggle" data-cta="outline" class="text-xs px-2 py-1 rounded border border-emerald-200 text-emerald-700" aria-label="切換是否已達成共識">🤝 標記為已達成共識</button>
+            </div>
+            <div>
+              <label class="text-sm font-medium text-gray-700 mb-1 block">整體回饋</label>
+              <textarea id="fb-overall" class="w-full rounded-lg border border-gray-300 px-3 py-2 min-h-[100px]" aria-label="整體回饋"></textarea>
+            </div>
+            <div>
+              <label class="text-sm font-medium text-gray-700 mb-1 block">建議下一步（里程碑/資源）</label>
+              <textarea id="fb-next" class="w-full rounded-lg border border-gray-300 px-3 py-2 min-h-[80px]" aria-label="建議下一步"></textarea>
+            </div>
+          </div>
+          <div class="mt-4">
+            <h5 class="text-sm font-medium text-gray-700 mb-2">既有回饋</h5>
+            <ul class="space-y-2">${teacherFbList}</ul>
+          </div>
+        `;
+
+        return `
+          <div class="mb-4">
+            <div class="text-sm text-gray-500">學生：${student.name}｜職級：${student.classLevel||''}｜導師：${student.teacherName||''}</div>
+            <div class="text-xs text-gray-500">建立：${ilp.createdAt||'-'}　更新：${ilp.updatedAt||'-'}　狀態：${ilp.status||'-'}　進度：${c.total}/${c.done}（${c.percent}%）</div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <section class="bg-gradient-to-b from-white to-primary-50/40 border border-primary-100 rounded-xl p-4">
+              <h4 class="font-semibold mb-3 text-primary-800">學生計畫內容</h4>
+              ${fieldsHtml}
+            </section>
+
+            <section class="bg-gradient-to-b from-white to-accent-50/40 border border-accent-100 rounded-xl p-4">
+              <h4 class="font-semibold mb-3 text-accent-800">AI 導師建議</h4>
+              <ul class="space-y-2">${aiCoachList}</ul>
+            </section>
+          </div>
+
+          <section class="bg-white border border-slate-200 rounded-xl p-4 mt-6">
+            <h4 class="font-semibold mb-3">教師回饋</h4>
+            ${readonly ? `<ul class="space-y-2">${teacherFbList}</ul>` : editor}
+          </section>
+        `;
+      }
+
+      // Submitting helpers
+      function setSubmitting(btn, submitting, label='送出') {
+        if (!btn) return;
+        btn.disabled = submitting;
+        btn.textContent = submitting ? '送出中…' : label;
+        btn.classList.toggle('opacity-60', submitting);
+        btn.classList.toggle('cursor-not-allowed', submitting);
+      }
+
+      function openReviewModalForTeacher(student, ilp) {
+        document.getElementById('btn-ai-for-teacher').style.display = '';
+        document.getElementById('btn-submit-feedback').style.display = '';
+        document.getElementById('btn-close-modal').style.display = '';
+
+        btnAiForTeacher.innerText = 'AI教師回饋';
+        btnSubmitFeedback.innerText = '送出';
+        btnCloseModal.innerText = '取消';
+        btnAiForTeacher.setAttribute('data-cta','card');
+        btnSubmitFeedback.setAttribute('data-cta','card');
+        btnCloseModal.setAttribute('data-cta','card');
+        document.getElementById('btn-save-feedback-draft').style.display = 'none';
+
+        reviewModalIcon.textContent = '🧑‍🏫';
+        reviewModalTitle.textContent = '審核學生計畫';
+        reviewModalBody.innerHTML = renderPlanDetails(ilp, student, false);
+        reviewModalHint.textContent = '教師可在此撰寫回饋，並標記是否已達成共識。';
+        hydrateButtons(reviewModal);
+
+        let currentAgreed = false;
+        const agreeBtn = reviewModalBody.querySelector('#fb-agree-toggle');
+        if (agreeBtn) {
+          agreeBtn.onclick = ()=>{
+            currentAgreed = !currentAgreed;
+            agreeBtn.textContent = currentAgreed ? '🤝 已達成共識' : '🤝 標記為已達成共識';
+          };
+        }
+
+        btnAiForTeacher.onclick = ()=>{
+          const tips = generateAiCoachAdvice(ilp, student);
+          const overall = document.getElementById('fb-overall');
+          const next = document.getElementById('fb-next');
+          overall.value = (overall.value? overall.value+'\n\n':'') + `建議回饋流程：\n- 每週 10–15 分鐘固定回饋\n- 使用 DOPS/mini-CEX 驗收\n- 針對 SMART 目標逐項檢核`;
+          next.value = (next.value? next.value+'\n\n':'') + tips.join('\n');
+        };
+
+        btnSubmitFeedback.onclick = async ()=>{
+          const fb = collectFeedback(true, currentAgreed);
+          if (!fb) return;
+          try {
+            setSubmitting(btnSubmitFeedback, true);
+            await persistFeedback(student, ilp, fb, true);
+            showToast('已送出回饋');
+            closeReviewModal();
+            renderTeacherDashboard();
+          } catch (e) {
+            console.error(e);
+            showError('送出失敗，請稍後再試');
+          } finally {
+            setSubmitting(btnSubmitFeedback, false);
+          }
+        };
+        btnCloseModal.onclick = closeReviewModal;
+
+        openModal();
+      }
+
+      function openReviewModalForView(student, ilp) {
+        document.getElementById('btn-ai-for-teacher').style.display = 'none';
+        document.getElementById('btn-save-feedback-draft').style.display = 'none';
+        document.getElementById('btn-submit-feedback').style.display = 'none';
+
+        btnCloseModal.innerText = '關閉';
+        btnCloseModal.setAttribute('data-cta','card');
+        btnCloseModal.style.display = '';
+        btnCloseModal.onclick = closeReviewModal;
+
+        reviewModalIcon.textContent = '📄';
+        reviewModalTitle.textContent = '查看學習計畫與教師回饋';
+        reviewModalBody.innerHTML = renderPlanDetails(ilp, student, true);
+        reviewModalHint.textContent = '僅供檢視。';
+        hydrateButtons(reviewModal);
+
+        openModal();
+      }
+
+      // New: Teacher view of all plans for a student (from 計畫數)
+      function openTeacherPlansModal(stuName) {
+        const teacherName = appState.currentUser?.name || '';
+        const student = DATA.students.find(x=>x.name===stuName) || { name: stuName, classLevel:'', teacherName: teacherName };
+        const plans = getIlpsForStudent(stuName) || [];
+
+        reviewModalIcon.textContent = '📊';
+        reviewModalTitle.textContent = `學生計畫清單：${stuName}`;
+        reviewModalHint.textContent = plans.length ? '選擇計畫後可查看內容或給予回饋。' : '此學員尚無計畫。';
+
+        if (!plans.length) {
+          reviewModalBody.innerHTML = `<div class="text-sm text-gray-600">此學員尚無計畫。</div>`;
+          btnAiForTeacher.style.display = 'none';
+          btnSubmitFeedback.style.display = 'none';
+          btnCloseModal.innerText = '關閉';
+          btnCloseModal.style.display = '';
+          btnCloseModal.onclick = closeReviewModal;
+          openModal();
+          return;
+        }
+
+        const options = plans.map((p, idx)=>{
+          const title = (p.fields?.goal?.slice(0,20) || '未填寫目標');
+          const status = p.status || '草稿';
+          return `<option value="${idx}">${p.createdAt||'-'}｜${title}｜${status}</option>`;
+        }).join('');
+        reviewModalBody.innerHTML = `
+          <div class="flex flex-col gap-2 mb-3">
+            <div class="flex items-center gap-2">
+              <label class="text-sm text-gray-600">選擇計畫</label>
+              <select id="teacher-plan-select" class="rounded-lg border border-gray-300 px-2 py-1 text-sm">${options}</select>
+              <span class="text-xs text-gray-500">共 ${plans.length} 筆</span>
+            </div>
+          </div>
+          <div id="teacher-plan-content"></div>
+        `;
+
+        function renderSelected(idx) {
+          const p = plans[idx];
+          document.getElementById('teacher-plan-content').innerHTML = renderPlanDetails(p, student, true);
+        }
+        const planSelect = reviewModalBody.querySelector('#teacher-plan-select');
+        planSelect.addEventListener('change', (e)=> renderSelected(Number(e.target.value)));
+        renderSelected(0);
+
+        // Repurpose footer buttons: 查看 / 給予回饋 / 關閉
+        btnAiForTeacher.style.display = '';
+        btnSubmitFeedback.style.display = '';
+        btnCloseModal.style.display = '';
+
+        btnAiForTeacher.innerText = '查看';
+        btnSubmitFeedback.innerText = '給予回饋';
+        btnCloseModal.innerText = '關閉';
+
+        btnAiForTeacher.setAttribute('data-cta','card');
+        btnSubmitFeedback.setAttribute('data-cta','card');
+        btnCloseModal.setAttribute('data-cta','card');
+
+        btnAiForTeacher.onclick = ()=>{
+          const idx = Number(planSelect.value || 0);
+          const p = plans[idx];
+          openReviewModalForView(student, p);
+        };
+        btnSubmitFeedback.onclick = ()=>{
+          const idx = Number(planSelect.value || 0);
+          const p = plans[idx];
+          openReviewModalForTeacher(student, p);
+        };
+        btnCloseModal.onclick = closeReviewModal;
+
+        hydrateButtons(reviewModal);
+        openModal();
+      }
+
+      // Admin: view student's plans (readonly)
+      function openStudentPlansModal(stuName) {
+        const student = DATA.students.find(x=>x.name===stuName) || { name: stuName, classLevel:'', teacherName:'' };
+        const plans = getIlpsForStudent(stuName);
+        reviewModalIcon.textContent = '📚';
+        reviewModalTitle.textContent = `學員計畫：${stuName}`;
+        reviewModalHint.textContent = '管理者檢視模式，可切換不同計畫查看完整內容與教師回饋。';
+
+        if (!plans.length) {
+          reviewModalBody.innerHTML = `<div class="text-sm text-gray-600">此學員尚無計畫。</div>`;
+          document.getElementById('btn-ai-for-teacher').style.display = 'none';
+          document.getElementById('btn-submit-feedback').style.display = 'none';
+          btnCloseModal.innerText = '關閉';
+          btnCloseModal.style.display = '';
+          btnCloseModal.onclick = closeReviewModal;
+          openModal();
+          return;
+        }
+
+        const options = plans.map((p, idx)=>{
+          const title = (p.fields?.goal?.slice(0,20) || '未填寫目標');
+          return `<option value="${idx}">${p.createdAt||'-'}｜${title}｜${p.status||'草稿'}</option>`;
+        }).join('');
+        reviewModalBody.innerHTML = `
+          <div class="flex items-center gap-2 mb-3">
+            <label class="text-sm text-gray-600">選擇計畫</label>
+            <select id="admin-plan-select" class="rounded-lg border border-gray-300 px-2 py-1 text-sm">${options}</select>
+          </div>
+          <div id="admin-plan-content"></div>
+        `;
+
+        function renderSelected(idx) {
+          const p = plans[idx];
+          document.getElementById('admin-plan-content').innerHTML = renderPlanDetails(p, student, true);
+        }
+        document.getElementById('admin-plan-select').addEventListener('change', (e)=> renderSelected(Number(e.target.value)));
+        renderSelected(0);
+
+        document.getElementById('btn-ai-for-teacher').style.display = 'none';
+        document.getElementById('btn-submit-feedback').style.display = 'none';
+        btnCloseModal.innerText = '關閉';
+        btnCloseModal.style.display = '';
+        btnCloseModal.onclick = closeReviewModal;
+
+        openModal();
+      }
+
+      function collectFeedback(submit, agreed) {
+        const overall = (document.getElementById('fb-overall')?.value||'').trim();
+        const next = (document.getElementById('fb-next')?.value||'').trim();
+        if (!overall && !next) { showError('請至少填寫一項回饋'); return null; }
+        return {
+          reviewer: appState.currentUser.name,
+          overall, next, agreed: !!agreed,
+          createdAt: new Date().toISOString().slice(0,16).replace('T',' '),
+          submitted: !!submit
+        };
+      }
+      async function persistFeedback(student, ilp, fb, submitted) {
+        const list = getIlpsForStudent(student.name);
+        const target = list.find(x=>x.id===ilp.id) || ilp;
+        target.teacherFeedback = target.teacherFeedback || [];
+        target.teacherFeedback.push(fb);
+        if (submitted) {
+          target.status = '已審閱';
+          target.metrics = target.metrics || {};
+          target.metrics.reviews = (target.metrics.reviews||0) + 1;
+          target.metrics.lastReviewedAt = new Date().toISOString().slice(0,10);
+          target.updatedAt = target.metrics.lastReviewedAt;
+        } else {
+          target.updatedAt = new Date().toISOString().slice(0,10);
+        }
+        saveIlpsForStudent(student.name, list);
+        await serverUpsertFeedback(student, target, fb);
+      }
+
+      // Login / Logout
+      document.getElementById('login-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const mode = loginModeSel.value;
+
+        if (mode === 'teacher' || mode === 'admin') {
+          const login = document.getElementById('teacher-login').value.trim();
+          const pwd   = document.getElementById('teacher-password').value;
+
+          if (mode === 'admin') {
+            const adm = appState.admins.find(a => a.userId === login && a.password === pwd);
+            if (!adm) { showError('管理者帳號或密碼錯誤'); return; }
+            appState.currentUser = { role: 'admin', name: adm.name || '管理者', userId: adm.userId };
+          } else {
+            const teacher = DATA.teachersById[login];
+            if (!teacher || teacher.password !== pwd) { showError('教師帳號或密碼錯誤'); return; }
+            appState.currentUser = { role: 'teacher', ...teacher };
+          }
+
+          loginView.classList.remove('active'); mainAppView.classList.add('active');
+          updateNav(); navigateTo(appState.currentUser.role==='admin' ? 'admin-dashboard' : 'teacher-dashboard');
+
+        } else {
+          const sid = (studentLoginInput?.value || '').trim();
+          const spw = (studentPasswordInput?.value || '').trim();
+          if (!sid || !spw) { showError('請輸入學生人事號與密碼'); return; }
+          const student = DATA.studentsByLoginId[sid];
+          if (!student || student.password !== spw) { showError('學生人事號或密碼錯誤'); return; }
+          appState.currentUser = { ...student };
+
+          await serverListIlps(student.name);
+
+          loginView.classList.remove('active'); mainAppView.classList.add('active');
+          updateNav(); navigateTo('student-dashboard');
+        }
+      });
+
+      logoutBtn.addEventListener('click', () => {
+        appState.currentUser = null; appState.currentILP = null;
+        closeAiDrawer(); closeReviewModal();
+        mainAppView.classList.remove('active'); loginView.classList.add('active');
+        welcomeText.classList.add('hidden'); welcomeText.textContent = ''; logoutBtn.classList.add('hidden');
+        const tLogin = document.getElementById('teacher-login');
+        const tPass = document.getElementById('teacher-password');
+        if (tLogin) tLogin.value = ''; if (tPass) tPass.value = '';
+        if (studentLoginInput) studentLoginInput.value=''; if (studentPasswordInput) studentPasswordInput.value='';
+      });
+
+      loginModeSel.addEventListener('change', () => {
+        const mode = loginModeSel.value;
+        if (mode === 'teacher' || mode === 'admin') { teacherFields.classList.remove('hidden'); studentFields.classList.add('hidden'); }
+        else { teacherFields.classList.add('hidden'); studentFields.classList.remove('hidden'); }
+      });
+
+      // INIT
+      appState.settings = loadSettings();
+      appState.admins = loadAdmins();
+      if (!appState.admins.length) {
+        appState.admins = [{ name:'管理者', userId:'A00924', password:'A00924', role:'admin' }];
+        saveAdmins(appState.admins);
+      }
+      DATA = loadDataset();
+      hydrateButtons(document);
+    });
+  </script>
 </body>
 </html>
